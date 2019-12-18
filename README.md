@@ -1,0 +1,2 @@
+# GoProject
+My go project
