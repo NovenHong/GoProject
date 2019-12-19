@@ -170,7 +170,7 @@ func main()  {
 		//fmt.Println(time.Unix(startTime,0).Format("2006-01-02 15:04:05"))
 		//fmt.Println(time.Unix(endTime,0).Format("2006-01-02 15:04:05"))
 	
-		fmt.Println(fmt.Sprintf("Task:%s begin StartDate:%s EndDate:%s",date,startTimeDate,endTimeDate))
+		fmt.Println(fmt.Sprintf("Task:%s begin StartDate:%s EndDate:%s RunDate:%s",date,startTimeDate,endTimeDate,time.Now().Format("2006-01-02 15:04:05")))
 
 		startTask()
 
