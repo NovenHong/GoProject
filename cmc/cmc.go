@@ -17,7 +17,7 @@ import (
 	"strings"
 	"math"
 	"regexp"
-	"os/exec"
+	//"os/exec"
 )
 
 const (
@@ -122,6 +122,17 @@ func init() {
 
 	months = append(months,time.Now().Format("2006-01"))
 
+	//1号统计上月数据
+	day := time.Now().Day()
+	if day == 1 {
+		curMonth := int(time.Now().Month())
+		lastMonth := (curMonth-1)
+		if lastMonth <= 0 {
+			lastMonth = 12
+		}
+		months = append(months,fmt.Sprintf("%d-%d",time.Now().Year(),lastMonth))
+	}
+
 	initFlag()
 
 }
@@ -184,10 +195,10 @@ func main()  {
 	fmt.Println(fmt.Sprintf("All task is compeleted,SuccessRow:%d ErrorRow:%d TotalRow:%d Time:%s",
 	totalSuccessCount,totalErrorCount,totalCount,resolveSecond(allEndTime-allStartTime)))
 
-	_,err := exec.Command("bash","-c","kill -USR1 `ps -ef | grep '/usr/bin/python.*cm' | grep -v 'grep' | awk '{print $2}'`").CombinedOutput()
-	if err != nil {
-		fmt.Println(fmt.Sprintf("Send signal error,Error:%s",err))
-	}
+	// _,err := exec.Command("bash","-c","kill -USR1 `ps -ef | grep '/usr/bin/python.*cm' | grep -v 'grep' | awk '{print $2}'`").CombinedOutput()
+	// if err != nil {
+	// 	fmt.Println(fmt.Sprintf("Send signal error,Error:%s",err))
+	// }
 }
 
 func startTask() {

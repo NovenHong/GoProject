@@ -159,6 +159,17 @@ func init() {
 
 	months = append(months,time.Now().Format("2006-01"))
 
+	//1号统计上月数据
+	day := time.Now().Day()
+	if day == 1 {
+		curMonth := int(time.Now().Month())
+		lastMonth := (curMonth-1)
+		if lastMonth <= 0 {
+			lastMonth = 12
+		}
+		months = append(months,fmt.Sprintf("%d-%d",time.Now().Year(),lastMonth))
+	}
+
 	initFlag()
 }
 
