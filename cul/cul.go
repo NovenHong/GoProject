@@ -167,7 +167,9 @@ func init() {
 		if lastMonth <= 0 {
 			lastMonth = 12
 		}
-		months = append(months,fmt.Sprintf("%d-%d",time.Now().Year(),lastMonth))
+		curYear := int(time.Now().Year())
+		lastYear := (curYear-1)
+		months = append(months,fmt.Sprintf("%d-%d",lastYear,lastMonth))
 	}
 
 	initFlag()
