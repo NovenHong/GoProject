@@ -126,13 +126,13 @@ func init() {
 	day := time.Now().Day()
 	if day == 1 {
 		curMonth := int(time.Now().Month())
-		lastMonth := (curMonth-1)
+		lastMonth := curMonth-1
+		curYear := int(time.Now().Year())
 		if lastMonth <= 0 {
 			lastMonth = 12
+			curYear = curYear-1
 		}
-		curYear := int(time.Now().Year())
-		lastYear := (curYear-1)
-		months = append(months,fmt.Sprintf("%d-%d",lastYear,lastMonth))
+		months = append(months,fmt.Sprintf("%d-%d",curYear,lastMonth))
 	}
 
 	initFlag()
