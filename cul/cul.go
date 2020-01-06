@@ -1,21 +1,21 @@
 package main
 
 import (
-	"fmt"
 	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
-	"flag"
-	"time"
-	"os"
-	"strings"
-	"github.com/techoner/gophp/serialize"
-	"net/http"
-	"io/ioutil"
 	"encoding/json"
-	"strconv"
-	"path/filepath"
+	"flag"
+	"fmt"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/techoner/gophp/serialize"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type ChannelId struct {
@@ -28,22 +28,22 @@ type ChannelData struct {
 }
 
 type UserData struct {
-	ChannelId int64 `db:"channel_id"`
-	UserId int64 `db:"user_id"`
-	Username string `db:"username"`
+	ChannelId int64  `db:"channel_id"`
+	UserId    int64  `db:"user_id"`
+	Username  string `db:"username"`
 }
 
 type UserPlayDataDetail struct {
-	UserId int64 `db:"user_id"`
-	Username string `db:"username"`
+	UserId     int64          `db:"user_id"`
+	Username   string         `db:"username"`
 	UniqueFlag sql.NullString `db:"unique_flag"`
-	Ip sql.NullString `db:"ip"`
+	Ip         sql.NullString `db:"ip"`
 }
 
 type UserPlayData struct {
-	UserId int64 `db:"user_id"`
-	Username sql.NullString `db:"username"`
-	UniqueFlagCount int `db:"unique_flag_count"`
+	UserId          int64          `db:"user_id"`
+	Username        sql.NullString `db:"username"`
+	UniqueFlagCount int            `db:"unique_flag_count"`
 }
 
 type OneLoginUserData struct {
@@ -55,55 +55,55 @@ type OneLoginEffectiveUserCountData struct {
 }
 
 type ChannelUserLoginData struct {
-	Id int64
-	ChannelId int64
-	SameUniqueFlagUserCount int
-	SameIpUserCount int
-	OneLoginUserCount int
+	Id                         int64
+	ChannelId                  int64
+	SameUniqueFlagUserCount    int
+	SameIpUserCount            int
+	OneLoginUserCount          int
 	OneLoginEffectiveUserCount int
-	Date string
-	DateTime int64
+	Date                       string
+	DateTime                   int64
 }
 
 type ChannelSameUniqueFlagUserData struct {
-	ChannelId int64
-	UserId int64
-	Username string
-	UniqueFlag string
+	ChannelId       int64
+	UserId          int64
+	Username        string
+	UniqueFlag      string
 	UserUniqueFlags []string
-	Date string
-	DateTime int64
+	Date            string
+	DateTime        int64
 }
 
 type UniqueFlagData struct {
-	UniqueFlag string
-	Count int
+	UniqueFlag                     string
+	Count                          int
 	ChannelSameUniqueFlagUserDatas []ChannelSameUniqueFlagUserData
 }
 
 type ChannelSameIpUserData struct {
 	ChannelId int64
-	UserId int64
-	Username string
-	Ip string
-	UserIps []string
-	Date string
-	DateTime int64
+	UserId    int64
+	Username  string
+	Ip        string
+	UserIps   []string
+	Date      string
+	DateTime  int64
 }
 
 type IpData struct {
-	Ip string
-	Count int
+	Ip                     string
+	Count                  int
 	ChannelSameIpUserDatas []ChannelSameIpUserData
 }
 
 const (
-    USERNAME = "root"
-    //PASSWORD = ""//game123456
-    NETWORK  = "tcp"
-    SERVER   = "localhost"
-    PORT     = 3306
-    DATABASE = "cj655"
+	USERNAME = "root"
+	//PASSWORD = ""//game123456
+	NETWORK  = "tcp"
+	SERVER   = "localhost"
+	PORT     = 3306
+	DATABASE = "cj655"
 )
 
 var PASSWORD string = ""
@@ -147,7 +147,7 @@ func init() {
 	myOS := os.Getenv("OS")
 	if myOS == "Windows_NT" {
 		PASSWORD = ""
-	}else{
+	} else {
 		PASSWORD = "game123456"
 	}
 
@@ -157,19 +157,19 @@ func init() {
 
 	months = []string{}
 
-	months = append(months,time.Now().Format("2006-01"))
+	months = append(months, time.Now().Format("2006-01"))
 
 	//1号统计上月数据
 	day := time.Now().Day()
 	if day == 1 {
 		curMonth := int(time.Now().Month())
-		lastMonth := curMonth-1
+		lastMonth := curMonth - 1
 		curYear := int(time.Now().Year())
 		if lastMonth <= 0 {
 			lastMonth = 12
-			curYear = curYear-1
+			curYear = curYear - 1
 		}
-		months = append(months,fmt.Sprintf("%d-%d",curYear,lastMonth))
+		months = append(months, fmt.Sprintf("%d-%d", curYear, lastMonth))
 	}
 
 	initFlag()
@@ -179,14 +179,7 @@ func main() {
 
 	allStartTime = time.Now().Unix()
 
-	channelDatas = getChannelDatas()
-
-	if len(channelDatas) == 0 {
-		fmt.Println("channelDatas is empty")
-		return
-	}
-
-	for _,month := range months {
+	for _, month := range months {
 
 		monthDays := getFirstLastMonthDay(month)
 		startTimeDate = monthDays["firstDay"]
@@ -198,7 +191,7 @@ func main() {
 
 		startTask()
 
-		time.Sleep(time.Second*5)
+		time.Sleep(time.Second * 5)
 
 		endLog()
 	}
@@ -206,14 +199,14 @@ func main() {
 	allEndTime = time.Now().Unix()
 
 	fmt.Println(fmt.Sprintf("All task is compeleted,SuccessRow:%d ErrorRow:%d TotalRow:%d Time:%s",
-	totalSuccessCount,totalErrorCount,totalCount,resolveSecond(allEndTime-allStartTime)))
+		totalSuccessCount, totalErrorCount, totalCount, resolveSecond(allEndTime-allStartTime)))
 }
 
 func startTask() {
-	
+
 	//fmt.Println(time.Unix(startTime,0).Format("2006-01-02 15:04:05"))
 	//fmt.Println(time.Unix(endTime,0).Format("2006-01-02 15:04:05"))
-	fmt.Println(fmt.Sprintf("Task:%s begin StartDate:%s EndDate:%s RunDate:%s",date,startTimeDate,endTimeDate,time.Now().Format("2006-01-02 15:04:05")))
+	fmt.Println(fmt.Sprintf("Task:%s begin StartDate:%s EndDate:%s RunDate:%s", date, startTimeDate, endTimeDate, time.Now().Format("2006-01-02 15:04:05")))
 
 	taskStartTime := time.Now().Unix()
 
@@ -221,31 +214,37 @@ func startTask() {
 	taskSuccessCount = 0
 	taskErrorCount = 0
 
-	for _,channelData := range channelDatas {
+	channelDatas = getChannelDatas()
+
+	if len(channelDatas) == 0 {
+		panic("ChannelDatas is empty")
+	}
+
+	for _, channelData := range channelDatas {
 
 		//fmt.Println(channelData.ChannelId)
 
 		userIds := getUserIds(channelData.UserDatas)
 
 		if len(userIds) == 0 {
-			failureLogger.Output(0,fmt.Sprintf("ChannelId:%d Error:UserData is empty",channelData.ChannelId))
+			failureLogger.Output(0, fmt.Sprintf("ChannelId:%d Error:UserData is empty", channelData.ChannelId))
 			continue
 		}
 
 		userDataDetails := getUserDataDetails(userIds)
 
-		uniqueFlagDatas5 := getSameUniqueFlagUserCountAndUser(userDataDetails,channelData.UserDatas)
+		uniqueFlagDatas5 := getSameUniqueFlagUserCountAndUser(userDataDetails, channelData.UserDatas)
 
-		for _,uniqueFlagData := range uniqueFlagDatas5 {
-			for _,channelSameUniqueFlagUserData := range uniqueFlagData.ChannelSameUniqueFlagUserDatas {
+		for _, uniqueFlagData := range uniqueFlagDatas5 {
+			for _, channelSameUniqueFlagUserData := range uniqueFlagData.ChannelSameUniqueFlagUserDatas {
 				saveChannelSameUniqueFlagUserData(channelSameUniqueFlagUserData)
 			}
 		}
 
-		ipDatas10 := getSameIpUserCountAndUser(userDataDetails,channelData.UserDatas)
+		ipDatas10 := getSameIpUserCountAndUser(userDataDetails, channelData.UserDatas)
 
-		for _,ipData := range ipDatas10 {
-			for _,channelSameIpUserData := range ipData.ChannelSameIpUserDatas {
+		for _, ipData := range ipDatas10 {
+			for _, channelSameIpUserData := range ipData.ChannelSameIpUserDatas {
 				saveChannelIpUserData(channelSameIpUserData)
 			}
 		}
@@ -279,14 +278,14 @@ func startTask() {
 	taskEndTime := time.Now().Unix()
 
 	fmt.Println(fmt.Sprintf("Task:%s is compeleted,SuccessRow:%d ErrorRow:%d TotalRow:%d Time:%s",
-	date,taskSuccessCount,taskErrorCount,taskCount,resolveSecond(taskEndTime-taskStartTime)))
+		date, taskSuccessCount, taskErrorCount, taskCount, resolveSecond(taskEndTime-taskStartTime)))
 
 }
 
 func getOneLoginUsernames(userPlayDatas []UserPlayData) (oneLoginUsernames []string) {
-	for _,userPlayData := range userPlayDatas {
-		if userPlayData.UniqueFlagCount == 1 && userPlayData.Username.Valid{
-			oneLoginUsernames = append(oneLoginUsernames,userPlayData.Username.String)
+	for _, userPlayData := range userPlayDatas {
+		if userPlayData.UniqueFlagCount == 1 && userPlayData.Username.Valid {
+			oneLoginUsernames = append(oneLoginUsernames, userPlayData.Username.String)
 		}
 	}
 	return
@@ -294,31 +293,31 @@ func getOneLoginUsernames(userPlayDatas []UserPlayData) (oneLoginUsernames []str
 
 func getOneLoginEffectiveUserCount(oneLoginUsernames []string) (oneLoginEffectiveUserCount int) {
 	//oneLoginUsernames = append(oneLoginUsernames,"ozPSJ1CHpPCRUOmLNB94eQcdiUj4")
-	if  len(oneLoginUsernames) == 0 {
+	if len(oneLoginUsernames) == 0 {
 		return
 	}
-	
-	where := fmt.Sprintf("( username in ( '%s' ) ) AND is_effective = 1 AND dabiao_time BETWEEN %d AND %d",strings.Join(oneLoginUsernames,"','"),startTime,endTime)
 
-	where2,_ := serialize.Marshal(where)
+	where := fmt.Sprintf("( username in ( '%s' ) ) AND is_effective = 1 AND dabiao_time BETWEEN %d AND %d", strings.Join(oneLoginUsernames, "','"), startTime, endTime)
+
+	where2, _ := serialize.Marshal(where)
 
 	where3 := string(where2)
 
 	field := "count(username) one_login_effective_user_count"
 
-	resp, err := http.PostForm("http://dj.cj655.com/api.php?m=player&a=admin_role_array7",url.Values{"where":{where3},"field":{field}})
+	resp, err := http.PostForm("http://dj.cj655.com/api.php?m=player&a=admin_role_array7", url.Values{"where": {where3}, "field": {field}})
 
 	if err != nil {
-		failureLogger.Output(0,fmt.Sprintf("Error:%v",err))
+		failureLogger.Output(0, fmt.Sprintf("Error:%v", err))
 		//failureLogger.Output(0,fmt.Sprintf("Error:%v",err))
-        return
+		return
 	}
-	
+
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	oneLoginEffectiveUserCountDatas := []OneLoginEffectiveUserCountData{}
 
-	_ = json.Unmarshal(body,&oneLoginEffectiveUserCountDatas)
+	_ = json.Unmarshal(body, &oneLoginEffectiveUserCountDatas)
 
 	oneLoginEffectiveUserCount = myAtoi(oneLoginEffectiveUserCountDatas[0].Count)
 
@@ -326,18 +325,18 @@ func getOneLoginEffectiveUserCount(oneLoginUsernames []string) (oneLoginEffectiv
 
 }
 
-func getSameIpUserCountAndUser(userDataDetails []UserPlayDataDetail,userDatas []UserData) (ipDatas10 []IpData) {
+func getSameIpUserCountAndUser(userDataDetails []UserPlayDataDetail, userDatas []UserData) (ipDatas10 []IpData) {
 	if len(userDataDetails) == 0 {
 		return
 	}
 
 	channelSameIpUserDatas := []ChannelSameIpUserData{}
 
-	for _,userData := range userDatas {
+	for _, userData := range userDatas {
 		userIps := []string{}
-		for _,userDataDetail := range userDataDetails {
+		for _, userDataDetail := range userDataDetails {
 			if userData.UserId == userDataDetail.UserId && userDataDetail.Ip.Valid {
-				userIps = append(userIps,userDataDetail.Ip.String)
+				userIps = append(userIps, userDataDetail.Ip.String)
 			}
 		}
 
@@ -351,26 +350,26 @@ func getSameIpUserCountAndUser(userDataDetails []UserPlayDataDetail,userDatas []
 
 		//fmt.Println(channelSameIpUserData)
 
-		channelSameIpUserDatas = append(channelSameIpUserDatas,*channelSameIpUserData)
+		channelSameIpUserDatas = append(channelSameIpUserDatas, *channelSameIpUserData)
 	}
 
 	ipDatas := map[string]IpData{}
 
-	for index,channelSameIpUserData := range channelSameIpUserDatas {
-		for _,ip := range channelSameIpUserData.UserIps {
-			ipData,ok := ipDatas[ip]
+	for index, channelSameIpUserData := range channelSameIpUserDatas {
+		for _, ip := range channelSameIpUserData.UserIps {
+			ipData, ok := ipDatas[ip]
 			if !ok {
 				ipData = *new(IpData)
 				ipData.Ip = ip
 			}
 
-			for index2,channelSameIpUserData2 := range channelSameIpUserDatas {
+			for index2, channelSameIpUserData2 := range channelSameIpUserDatas {
 				if index == index2 {
 					continue
 				}
-				if inArray(ip,channelSameIpUserData2.UserIps) {
+				if inArray(ip, channelSameIpUserData2.UserIps) {
 					isNotExist := true
-					for _,v := range ipData.ChannelSameIpUserDatas {
+					for _, v := range ipData.ChannelSameIpUserDatas {
 						if channelSameIpUserData2.UserId == v.UserId {
 							isNotExist = false
 							break
@@ -379,7 +378,7 @@ func getSameIpUserCountAndUser(userDataDetails []UserPlayDataDetail,userDatas []
 					if isNotExist {
 						ipData.Count++
 						channelSameIpUserData2.Ip = ip
-						ipData.ChannelSameIpUserDatas = append(ipData.ChannelSameIpUserDatas,channelSameIpUserData2)
+						ipData.ChannelSameIpUserDatas = append(ipData.ChannelSameIpUserDatas, channelSameIpUserData2)
 					}
 				}
 			}
@@ -388,16 +387,16 @@ func getSameIpUserCountAndUser(userDataDetails []UserPlayDataDetail,userDatas []
 		}
 	}
 
-	for _,ipData := range ipDatas {
+	for _, ipData := range ipDatas {
 		if ipData.Count >= 10 {
-			ipDatas10 = append(ipDatas10,ipData)
+			ipDatas10 = append(ipDatas10, ipData)
 		}
 	}
 
 	return
 }
 
-func getSameUniqueFlagUserCountAndUser(userDataDetails []UserPlayDataDetail,userDatas []UserData) (uniqueFlagDatas5 []UniqueFlagData){
+func getSameUniqueFlagUserCountAndUser(userDataDetails []UserPlayDataDetail, userDatas []UserData) (uniqueFlagDatas5 []UniqueFlagData) {
 
 	if len(userDataDetails) == 0 {
 		return
@@ -405,11 +404,11 @@ func getSameUniqueFlagUserCountAndUser(userDataDetails []UserPlayDataDetail,user
 
 	channelSameUniqueFlagUserDatas := []ChannelSameUniqueFlagUserData{}
 
-	for _,userData := range userDatas {
+	for _, userData := range userDatas {
 		userUniqueFlags := []string{}
-		for _,userDataDetail := range userDataDetails {
+		for _, userDataDetail := range userDataDetails {
 			if userData.UserId == userDataDetail.UserId && userDataDetail.UniqueFlag.Valid {
-				userUniqueFlags = append(userUniqueFlags,userDataDetail.UniqueFlag.String)
+				userUniqueFlags = append(userUniqueFlags, userDataDetail.UniqueFlag.String)
 			}
 		}
 
@@ -421,28 +420,28 @@ func getSameUniqueFlagUserCountAndUser(userDataDetails []UserPlayDataDetail,user
 		channelSameUniqueFlagUserData.Date = date
 		channelSameUniqueFlagUserData.DateTime = dateTime
 
-		channelSameUniqueFlagUserDatas = append(channelSameUniqueFlagUserDatas,*channelSameUniqueFlagUserData)
+		channelSameUniqueFlagUserDatas = append(channelSameUniqueFlagUserDatas, *channelSameUniqueFlagUserData)
 		//fmt.Println(userUniqueFlags)
 	}
 
 	uniqueFlagDatas := map[string]UniqueFlagData{}
 
-	for index,channelSameUniqueFlagUserData := range channelSameUniqueFlagUserDatas {
-		for _,uniqueFlag := range channelSameUniqueFlagUserData.UserUniqueFlags {
+	for index, channelSameUniqueFlagUserData := range channelSameUniqueFlagUserDatas {
+		for _, uniqueFlag := range channelSameUniqueFlagUserData.UserUniqueFlags {
 
-			uniqueFlagData,ok := uniqueFlagDatas[uniqueFlag]
+			uniqueFlagData, ok := uniqueFlagDatas[uniqueFlag]
 			if !ok {
 				uniqueFlagData = *new(UniqueFlagData)
 				uniqueFlagData.UniqueFlag = uniqueFlag
 			}
 
-			for index2,channelSameUniqueFlagUserData2 := range channelSameUniqueFlagUserDatas {
+			for index2, channelSameUniqueFlagUserData2 := range channelSameUniqueFlagUserDatas {
 				if index == index2 {
 					continue
 				}
-				if inArray(uniqueFlag,channelSameUniqueFlagUserData2.UserUniqueFlags) {
+				if inArray(uniqueFlag, channelSameUniqueFlagUserData2.UserUniqueFlags) {
 					isNotExist := true
-					for _,v := range uniqueFlagData.ChannelSameUniqueFlagUserDatas {
+					for _, v := range uniqueFlagData.ChannelSameUniqueFlagUserDatas {
 						if channelSameUniqueFlagUserData2.UserId == v.UserId {
 							isNotExist = false
 							break
@@ -451,8 +450,8 @@ func getSameUniqueFlagUserCountAndUser(userDataDetails []UserPlayDataDetail,user
 					if isNotExist {
 						uniqueFlagData.Count++
 						channelSameUniqueFlagUserData2.UniqueFlag = uniqueFlag
-						uniqueFlagData.ChannelSameUniqueFlagUserDatas = append(uniqueFlagData.ChannelSameUniqueFlagUserDatas,channelSameUniqueFlagUserData2)
-					}								
+						uniqueFlagData.ChannelSameUniqueFlagUserDatas = append(uniqueFlagData.ChannelSameUniqueFlagUserDatas, channelSameUniqueFlagUserData2)
+					}
 				}
 			}
 
@@ -460,10 +459,9 @@ func getSameUniqueFlagUserCountAndUser(userDataDetails []UserPlayDataDetail,user
 		}
 	}
 
-
-	for _,uniqueFlagData := range uniqueFlagDatas {
+	for _, uniqueFlagData := range uniqueFlagDatas {
 		if uniqueFlagData.Count >= 5 {
-			uniqueFlagDatas5 = append(uniqueFlagDatas5,uniqueFlagData)
+			uniqueFlagDatas5 = append(uniqueFlagDatas5, uniqueFlagData)
 		}
 	}
 
@@ -481,12 +479,12 @@ func getUserPlayDatas(userIds []string) (userPlayDatas []UserPlayData) {
 
 	quarySql = fmt.Sprintf(`SELECT user_id,username,count(unique_flag) unique_flag_count 
 	FROM gc_user_play_data WHERE ( user_id in ( %s ) ) AND ( ( login_time BETWEEN %d AND %d ) ) GROUP BY user_id`,
-	strings.Join(userIds,","),startTime,endTime)
+		strings.Join(userIds, ","), startTime, endTime)
 
 	rows, err := DB.Query(quarySql)
 
 	if err != nil {
-		failureLogger.Output(0,fmt.Sprintf("Sql:%s Error:%v",quarySql,err))
+		failureLogger.Output(0, fmt.Sprintf("Sql:%s Error:%v", quarySql, err))
 		return
 	}
 
@@ -495,9 +493,9 @@ func getUserPlayDatas(userIds []string) (userPlayDatas []UserPlayData) {
 	userPlayDatas = []UserPlayData{}
 
 	for rows.Next() {
-		rows.Scan(&userPlayData.UserId,&userPlayData.Username,&userPlayData.UniqueFlagCount)
+		rows.Scan(&userPlayData.UserId, &userPlayData.Username, &userPlayData.UniqueFlagCount)
 
-		userPlayDatas = append(userPlayDatas,*userPlayData)
+		userPlayDatas = append(userPlayDatas, *userPlayData)
 	}
 
 	defer func() {
@@ -515,12 +513,12 @@ func getUserDataDetails(userIds []string) (userDataDetails []UserPlayDataDetail)
 
 	quarySql = fmt.Sprintf(`SELECT unique_flag,ip,user_id,username 
 	FROM gc_user_play_data 
-	WHERE ( user_id in ( %s ) ) AND ( ( login_time BETWEEN %d AND %d ) )`,strings.Join(userIds,","),startTime,endTime)
+	WHERE ( user_id in ( %s ) ) AND ( ( login_time BETWEEN %d AND %d ) )`, strings.Join(userIds, ","), startTime, endTime)
 
 	rows, err := DB.Query(quarySql)
 
 	if err != nil {
-		failureLogger.Output(0,fmt.Sprintf("Sql:%s Error:%v",quarySql,err))
+		failureLogger.Output(0, fmt.Sprintf("Sql:%s Error:%v", quarySql, err))
 		return
 	}
 
@@ -529,9 +527,9 @@ func getUserDataDetails(userIds []string) (userDataDetails []UserPlayDataDetail)
 	userDataDetails = []UserPlayDataDetail{}
 
 	for rows.Next() {
-		rows.Scan(&userPlayDataDetail.UniqueFlag,&userPlayDataDetail.Ip,&userPlayDataDetail.UserId,&userPlayDataDetail.Username)
+		rows.Scan(&userPlayDataDetail.UniqueFlag, &userPlayDataDetail.Ip, &userPlayDataDetail.UserId, &userPlayDataDetail.Username)
 		//fmt.Println(userPlayDataDetail)
-		userDataDetails = append(userDataDetails,*userPlayDataDetail)
+		userDataDetails = append(userDataDetails, *userPlayDataDetail)
 	}
 
 	defer func() {
@@ -544,28 +542,32 @@ func getUserDataDetails(userIds []string) (userDataDetails []UserPlayDataDetail)
 func getUserIds(userDatas []UserData) (userIds []string) {
 
 	userIds = []string{}
-	for _,value := range userDatas {
-		userIds = append(userIds,strconv.FormatInt(value.UserId,10))
+	for _, value := range userDatas {
+		userIds = append(userIds, strconv.FormatInt(value.UserId, 10))
 	}
 
 	return
 }
 
-func getUserDatas(channelId int64) (userDatas []UserData){
-	quarySql = fmt.Sprintf(`SELECT user_id,channel_id,username FROM gc_user WHERE (channel_id = %d)`,channelId)
+func getUserDatas(channelId int64) (userDatas []UserData) {
+	quarySql = fmt.Sprintf(`SELECT user_id,channel_id,username FROM gc_user 
+	WHERE (channel_id = %d) AND (reg_time BETWEEN %d AND %d) `, channelId, startTime, endTime)
+
+	//fmt.Println(quarySql)
+	//os.Exit(0)
 
 	rows, err := DB.Query(quarySql)
 
 	if err != nil {
-		failureLogger.Output(0,fmt.Sprintf("Sql:%s Error:%v",quarySql,err))
+		failureLogger.Output(0, fmt.Sprintf("Sql:%s Error:%v", quarySql, err))
 		return
 	}
 
 	userData := new(UserData)
 
 	for rows.Next() {
-		rows.Scan(&userData.UserId,&userData.ChannelId,&userData.Username)
-		userDatas = append(userDatas,*userData)
+		rows.Scan(&userData.UserId, &userData.ChannelId, &userData.Username)
+		userDatas = append(userDatas, *userData)
 	}
 
 	defer func() {
@@ -579,13 +581,13 @@ func getChannelDatas() (channelDatas []ChannelData) {
 
 	channelIds := getChannelIds()
 
-	for _,channelId := range channelIds {
+	for _, channelId := range channelIds {
 
 		channelData := new(ChannelData)
 		userDatas := getUserDatas(int64(myAtoi(channelId.ChannelId)))
 		channelData.ChannelId = int64(myAtoi(channelId.ChannelId))
 		channelData.UserDatas = userDatas
-		channelDatas = append(channelDatas,*channelData)
+		channelDatas = append(channelDatas, *channelData)
 	}
 
 	return
@@ -595,26 +597,26 @@ func getChannelIds() (channelIds []ChannelId) {
 	where := "(status > 0) AND (channel_is_delete = 0) AND (channel_id > 0)"
 
 	if channelId > 0 {
-		where = fmt.Sprintf("channel_id = %d",channelId)
+		where = fmt.Sprintf("channel_id = %d", channelId)
 	}
 
-	where2,_ := serialize.Marshal(where)
+	where2, _ := serialize.Marshal(where)
 
 	where3 := string(where2)
 
 	field := "channel_id"
 
 	myUrl := "https://www.cj655.com/api.php?m=channelpublic&a=channel_data&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z"
-	
+
 	if limit > 0 {
-		myUrl = fmt.Sprintf("https://www.cj655.com/api.php?m=channelpublic&a=channel_data&limit=%d&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z",limit)
+		myUrl = fmt.Sprintf("https://www.cj655.com/api.php?m=channelpublic&a=channel_data&limit=%d&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z", limit)
 	}
 
-	resp, err := http.PostForm(myUrl,url.Values{"where":{where3},"field":{field}})
+	resp, err := http.PostForm(myUrl, url.Values{"where": {where3}, "field": {field}})
 
 	if err != nil {
-		failureLogger.Output(0,fmt.Sprintf("Error:%v",err))
-        return
+		failureLogger.Output(0, fmt.Sprintf("Error:%v", err))
+		return
 	}
 
 	body, _ := ioutil.ReadAll(resp.Body)
@@ -622,41 +624,41 @@ func getChannelIds() (channelIds []ChannelId) {
 	//fmt.Println(string(body))
 	//os.Exit(0)
 
-	_ = json.Unmarshal(body,&channelIds)
+	_ = json.Unmarshal(body, &channelIds)
 
 	return
 }
 
 func myAtoi(s string) (i int) {
-	i,_ = strconv.Atoi(s)
+	i, _ = strconv.Atoi(s)
 	return
 }
 
 func openDB() (DB *sql.DB) {
-	dsn := fmt.Sprintf("%s:%s@%s(%s:%d)/%s",USERNAME,PASSWORD,NETWORK,SERVER,PORT,DATABASE)
-	DB,err = sql.Open("mysql",dsn)
-	
-	if err != nil{
-        panic(fmt.Sprintf("Open mysql failed,Error:%v\n",err))
+	dsn := fmt.Sprintf("%s:%s@%s(%s:%d)/%s", USERNAME, PASSWORD, NETWORK, SERVER, PORT, DATABASE)
+	DB, err = sql.Open("mysql", dsn)
+
+	if err != nil {
+		panic(fmt.Sprintf("Open mysql failed,Error:%v\n", err))
 	}
 
-	DB.SetConnMaxLifetime(100*time.Second)  //最大连接周期，超过时间的连接就close
-    DB.SetMaxOpenConns(100)//设置最大连接数
-	DB.SetMaxIdleConns(16) //设置闲置连接数
+	DB.SetConnMaxLifetime(100 * time.Second) //最大连接周期，超过时间的连接就close
+	DB.SetMaxOpenConns(100)                  //设置最大连接数
+	DB.SetMaxIdleConns(16)                   //设置闲置连接数
 
 	return
 }
 
 func initFlag() {
 	var currentMonth string
-	flag.StringVar(&currentMonth,"month","","当前的月份")
-	flag.IntVar(&limit,"limit",0,"全部条数")
-	flag.IntVar(&update,"update",1,"是否更新主表")
-	flag.Int64Var(&channelId,"channelId",0,"单个渠道计算")
+	flag.StringVar(&currentMonth, "month", "", "当前的月份")
+	flag.IntVar(&limit, "limit", 0, "全部条数")
+	flag.IntVar(&update, "update", 1, "是否更新主表")
+	flag.Int64Var(&channelId, "channelId", 0, "单个渠道计算")
 	flag.Parse()
 
 	if currentMonth != "" {
-		months = strings.Split(currentMonth,",")
+		months = strings.Split(currentMonth, ",")
 	}
 }
 
@@ -667,7 +669,7 @@ func initTime() {
 
 	//endTimeDate := time.Now().Format("2006-01-02")
 	theTime, _ = time.ParseInLocation("2006-01-02", endTimeDate, loc)
-	endTime = theTime.Unix()+86399
+	endTime = theTime.Unix() + 86399
 
 	date = theTime.Format("2006-01")
 
@@ -679,47 +681,47 @@ func initTime() {
 func isExistChannelUserLoginData(channelUserLoginData ChannelUserLoginData) (id int64) {
 	quarySql2 := fmt.Sprintf(`Select id 
 	FROM gc_channel_user_login WHERE channel_id = %d AND date = '%s' LIMIT 1`,
-	channelUserLoginData.ChannelId,
-	channelUserLoginData.Date,
+		channelUserLoginData.ChannelId,
+		channelUserLoginData.Date,
 	)
 
 	row := DB.QueryRow(quarySql2)
-	row.Scan(&id);
+	row.Scan(&id)
 
-	return 
+	return
 }
 
 func isExistChannelSameUniqueFlagUserData(channelSameUniqueFlagUserData ChannelSameUniqueFlagUserData) (id int64) {
 	quarySql2 := fmt.Sprintf(`Select id 
 	FROM gc_channel_same_unique_flag_user WHERE channel_id = %d AND user_id = %d AND unique_flag = '%s' AND date = '%s' LIMIT 1`,
-	channelSameUniqueFlagUserData.ChannelId,
-	channelSameUniqueFlagUserData.UserId,
-	channelSameUniqueFlagUserData.UniqueFlag,
-	channelSameUniqueFlagUserData.Date,
+		channelSameUniqueFlagUserData.ChannelId,
+		channelSameUniqueFlagUserData.UserId,
+		channelSameUniqueFlagUserData.UniqueFlag,
+		channelSameUniqueFlagUserData.Date,
 	)
 
 	row := DB.QueryRow(quarySql2)
-	row.Scan(&id);
+	row.Scan(&id)
 
-	return 
+	return
 }
 
 func isExistChannelSameIpUserData(channelSameIpUserData ChannelSameIpUserData) (id int64) {
 	quarySql2 := fmt.Sprintf(`Select id 
 	FROM gc_channel_same_ip_user WHERE channel_id = %d AND user_id = %d AND ip = '%s' AND date = '%s' LIMIT 1`,
-	channelSameIpUserData.ChannelId,
-	channelSameIpUserData.UserId,
-	channelSameIpUserData.Ip,
-	channelSameIpUserData.Date,
+		channelSameIpUserData.ChannelId,
+		channelSameIpUserData.UserId,
+		channelSameIpUserData.Ip,
+		channelSameIpUserData.Date,
 	)
 
 	row := DB.QueryRow(quarySql2)
-	row.Scan(&id);
+	row.Scan(&id)
 
-	return 
+	return
 }
 
-func saveChannelSameUniqueFlagUserData (channelSameUniqueFlagUserData ChannelSameUniqueFlagUserData) {
+func saveChannelSameUniqueFlagUserData(channelSameUniqueFlagUserData ChannelSameUniqueFlagUserData) {
 
 	if id := isExistChannelSameUniqueFlagUserData(channelSameUniqueFlagUserData); id == 0 {
 		DB.Exec(
@@ -734,7 +736,7 @@ func saveChannelSameUniqueFlagUserData (channelSameUniqueFlagUserData ChannelSam
 	}
 }
 
-func saveChannelIpUserData (channelSameIpUserData ChannelSameIpUserData) {
+func saveChannelIpUserData(channelSameIpUserData ChannelSameIpUserData) {
 
 	if id := isExistChannelSameIpUserData(channelSameIpUserData); id == 0 {
 		DB.Exec(
@@ -753,16 +755,16 @@ func saveChannelIpUserData (channelSameIpUserData ChannelSameIpUserData) {
 func saveChannelUserLoginData(channelUserLoginData ChannelUserLoginData) {
 
 	if channelUserLoginData.SameUniqueFlagUserCount == 0 &&
-	   channelUserLoginData.SameIpUserCount == 0 &&
-	   channelUserLoginData.OneLoginUserCount == 0 &&
-	   channelUserLoginData.OneLoginEffectiveUserCount == 0 {
+		channelUserLoginData.SameIpUserCount == 0 &&
+		channelUserLoginData.OneLoginUserCount == 0 &&
+		channelUserLoginData.OneLoginEffectiveUserCount == 0 {
 		return
 	}
 
 	var err error
 
 	if id := isExistChannelUserLoginData(channelUserLoginData); id > 0 {
-		_,err = DB.Exec(
+		_, err = DB.Exec(
 			"UPDATE gc_channel_user_login SET same_unique_flag_user_count = ?,same_ip_user_count = ?,one_login_user_count = ?,one_login_effective_user_count=? WHERE id=?",
 			channelUserLoginData.SameUniqueFlagUserCount,
 			channelUserLoginData.SameIpUserCount,
@@ -770,8 +772,8 @@ func saveChannelUserLoginData(channelUserLoginData ChannelUserLoginData) {
 			channelUserLoginData.OneLoginEffectiveUserCount,
 			id,
 		)
-	}else{
-		_,err = DB.Exec(
+	} else {
+		_, err = DB.Exec(
 			"insert INTO gc_channel_user_login(channel_id,same_unique_flag_user_count,same_ip_user_count,one_login_user_count,one_login_effective_user_count,date,date_time) values(?,?,?,?,?,?,?)",
 			channelUserLoginData.ChannelId,
 			channelUserLoginData.SameUniqueFlagUserCount,
@@ -783,11 +785,11 @@ func saveChannelUserLoginData(channelUserLoginData ChannelUserLoginData) {
 		)
 	}
 
-	if err != nil{
+	if err != nil {
 		totalErrorCount++
 		taskErrorCount++
-		failureLogger.Output(0,fmt.Sprintf("Data:%v Error:%v",channelUserLoginData,err))
-	}else{
+		failureLogger.Output(0, fmt.Sprintf("Data:%v Error:%v", channelUserLoginData, err))
+	} else {
 		totalSuccessCount++
 		taskSuccessCount++
 	}
@@ -797,12 +799,11 @@ func saveChannelUserLoginData(channelUserLoginData ChannelUserLoginData) {
 
 }
 
-
 func getFirstLastMonthDay(monthDate string) (monthDays map[string]string) {
 	theTime, _ := time.ParseInLocation("2006-01", monthDate, loc)
-	year,month,_ := theTime.Date()
+	year, month, _ := theTime.Date()
 
-	firstMonthUTC :=time.Date(year,month,1,0,0,0,0,loc)
+	firstMonthUTC := time.Date(year, month, 1, 0, 0, 0, 0, loc)
 	firstMonthDay := firstMonthUTC.Format("2006-01-02")
 	lastMonthDay := firstMonthUTC.AddDate(0, 1, -1).Format("2006-01-02")
 
@@ -814,8 +815,8 @@ func getFirstLastMonthDay(monthDate string) (monthDays map[string]string) {
 	return
 }
 
-func inArray(needle string,haystack []string) bool {
-	for _,value := range haystack {
+func inArray(needle string, haystack []string) bool {
+	for _, value := range haystack {
 		if value == needle {
 			return true
 		}
@@ -824,26 +825,25 @@ func inArray(needle string,haystack []string) bool {
 	return false
 }
 
-
 func intersect(slice1, slice2 []string) []string {
 	m := make(map[string]int)
 	nn := make([]string, 0)
-	if len(slice1) <= len(slice2){
+	if len(slice1) <= len(slice2) {
 		for _, v := range slice1 {
 			m[v]++
 		}
-	 
+
 		for _, v := range slice2 {
 			times, ok := m[v]
 			if ok && times > 0 {
 				nn = append(nn, v)
 			}
 		}
-	}else {
+	} else {
 		for _, v := range slice2 {
 			m[v]++
 		}
-	 
+
 		for _, v := range slice1 {
 			times, ok := m[v]
 			if ok && times > 0 {
@@ -856,15 +856,15 @@ func intersect(slice1, slice2 []string) []string {
 
 func resolveSecond(second int64) (time string) {
 
-	minute := second/60
+	minute := second / 60
 
-	hour := minute/60
+	hour := minute / 60
 
-	minute = minute%60
+	minute = minute % 60
 
-	second = second-hour*3600-minute*60
+	second = second - hour*3600 - minute*60
 
-	time = fmt.Sprintf("%d:%d:%d",hour,minute,second)
+	time = fmt.Sprintf("%d:%d:%d", hour, minute, second)
 
 	//fmt.Println(time)
 
@@ -876,9 +876,9 @@ func initLog() {
 	myOS := os.Getenv("OS")
 	if myOS == "Windows_NT" {
 		logDirPath = "./log"
-	}else{
+	} else {
 		path, _ := filepath.Abs(filepath.Dir(os.Args[0]))
-		logDirPath = fmt.Sprintf("%s/log",path)
+		logDirPath = fmt.Sprintf("%s/log", path)
 	}
 
 	//create log dir
@@ -888,16 +888,16 @@ func initLog() {
 	}
 
 	//log
-	failureLogFile, _ := os.OpenFile(fmt.Sprintf("%s/cul_failure-%s.log",logDirPath,date), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
-	failureLogger = log.New(failureLogFile,"",log.Ldate | log.Ltime)
+	failureLogFile, _ := os.OpenFile(fmt.Sprintf("%s/cul_failure-%s.log", logDirPath, date), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
+	failureLogger = log.New(failureLogFile, "", log.Ldate|log.Ltime)
 
 	beginLog()
 }
 
 func beginLog() {
-	failureLogger.Output(0,"\n\n========== Begin ==========")
+	failureLogger.Output(0, "\n\n========== Begin ==========")
 }
 
 func endLog() {
-	failureLogger.Output(0,"\n========== End ==========\n\n")
+	failureLogger.Output(0, "\n========== End ==========\n\n")
 }
