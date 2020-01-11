@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/techoner/gophp/serialize"
 	"io/ioutil"
 	"math"
 	"net/http"
@@ -11,9 +13,6 @@ import (
 	"reflect"
 	"strings"
 	"time"
-
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/techoner/gophp/serialize"
 )
 
 const (
@@ -32,6 +31,9 @@ var maxConnections int
 var waitDBNotBusyCount int
 var waitDBNotBusyTimeout int
 var loc *time.Location
+var totalCount int64 = 0
+var totalSuccessCount int64 = 0
+var totalErrorCount int64 = 0
 
 type ServerData struct {
 	GameId   int64 `db:"game_id"`
@@ -67,33 +69,37 @@ func init() {
 	}
 
 	DB = openDB()
+
+	loc, _ = time.LoadLocation("Local")
 }
 
 func main() {
 
-	//whether database is busy
-	for {
-		if isDBBusy() {
-			DB.Close()
-			waitDBNotBusyCount++
-			waitTime := time.Second * time.Duration(math.Pow(5, float64(waitDBNotBusyCount)))
-			fmt.Println(fmt.Sprintf("Database is busy,WaitCount:%d WaitTime:%v", waitDBNotBusyCount, waitTime))
-			time.Sleep(waitTime)
-			openDB()
-		} else {
-			waitDBNotBusyCount = 0
-			break
-		}
-
-	}
-
 	date := time.Now().AddDate(0, 0, -1)
 
-	loc, _ = time.LoadLocation("Local")
+	fmt.Println(fmt.Sprintf("Task begin StartDate:%s EndDate:%s RunDate:%s", date.AddDate(0, 0, -90).Format("2006-01-02"), date.Format("2006-01-02"), time.Now().Format("2006-01-02 15:04:05")))
+
+	taskStartTime := time.Now().Unix()
 
 	serverDatas := getServerDatas()
 
 	for i := 0; i < 1; i++ {
+
+		//whether database is busy
+		for {
+			if isDBBusy() {
+				DB.Close()
+				waitDBNotBusyCount++
+				waitTime := time.Second * time.Duration(math.Pow(5, float64(waitDBNotBusyCount)))
+				fmt.Println(fmt.Sprintf("Database is busy,WaitCount:%d WaitTime:%v", waitDBNotBusyCount, waitTime))
+				time.Sleep(waitTime)
+				openDB()
+			} else {
+				waitDBNotBusyCount = 0
+				break
+			}
+		}
+
 		startDate := date.AddDate(0, 0, -i)
 
 		theTime := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, loc)
@@ -103,20 +109,32 @@ func main() {
 
 		for _, serverData := range serverDatas {
 
-			if serverData.ServerId != 41270 {
-				continue
-			}
-
 			serverDetailDatas := getServerDetailDatas(serverData, startTime, endTime)
 
 			userIds := getUserIds(serverDetailDatas)
 
+			if len(userIds) == 0 {
+				continue
+			}
+
 			createRoleKeepData := getCreateRoleKeepData(serverData, userIds, theTime)
 
-			SmartPrint(createRoleKeepData)
+			if id := isExistCreateRoleKeepData(createRoleKeepData); id > 0 {
+				createRoleKeepData.Id = id
+			}
+
+			//SmartPrint(createRoleKeepData)
+
+			saveCreateRoleKeepData(createRoleKeepData)
+
 		}
 
 	}
+
+	taskEndTime := time.Now().Unix()
+
+	fmt.Println(fmt.Sprintf("All task is compeleted,SuccessRow:%d ErrorRow:%d TotalRow:%d Time:%s",
+		totalSuccessCount, totalErrorCount, totalCount, resolveSecond(taskEndTime-taskStartTime)))
 
 }
 
@@ -185,6 +203,70 @@ func getCreateRoleKeepData(serverData ServerData, userIds []string, date time.Ti
 	createRoleKeepData.KeepNum90 = keepNum90
 
 	return
+}
+
+func isExistCreateRoleKeepData(createRoleKeepData CreateRoleKeepData) (id int64) {
+	querySql := fmt.Sprintf(`SELECT id FROM gc_create_role_keep WHERE date_time = %d AND game_id = %d AND server_id = %d LIMIT 1`,
+		createRoleKeepData.DateTime,
+		createRoleKeepData.GameId,
+		createRoleKeepData.ServerId,
+	)
+
+	row := DB.QueryRow(querySql)
+	row.Scan(&id)
+
+	return
+}
+
+func saveCreateRoleKeepData(createRoleKeepData CreateRoleKeepData) {
+	var err error
+	var querySql string
+
+	if createRoleKeepData.Id > 0 {
+		querySql = `UPDATE gc_create_role_keep SET 
+		create_num=?,keep_num_1=?,keep_num_3=?,keep_num_7=?,keep_num_14=?,keep_num_30=?,keep_num_60=?,keep_num_90=? 
+		WHERE id=?`
+		_, err = DB.Exec(
+			querySql,
+			createRoleKeepData.CreateNum,
+			createRoleKeepData.KeepNum1,
+			createRoleKeepData.KeepNum3,
+			createRoleKeepData.KeepNum7,
+			createRoleKeepData.KeepNum14,
+			createRoleKeepData.KeepNum30,
+			createRoleKeepData.KeepNum60,
+			createRoleKeepData.KeepNum90,
+			createRoleKeepData.Id,
+		)
+	} else {
+		querySql = `insert INTO gc_create_role_keep
+		(date,date_time,game_id,server_id,create_num,keep_num_1,keep_num_3,keep_num_7,keep_num_14,keep_num_30,keep_num_60,keep_num_90)
+		values(?,?,?,?,?,?,?,?,?,?,?,?)`
+		_, err = DB.Exec(
+			querySql,
+			createRoleKeepData.Date,
+			createRoleKeepData.DateTime,
+			createRoleKeepData.GameId,
+			createRoleKeepData.ServerId,
+			createRoleKeepData.CreateNum,
+			createRoleKeepData.KeepNum1,
+			createRoleKeepData.KeepNum3,
+			createRoleKeepData.KeepNum7,
+			createRoleKeepData.KeepNum14,
+			createRoleKeepData.KeepNum30,
+			createRoleKeepData.KeepNum60,
+			createRoleKeepData.KeepNum90,
+		)
+	}
+
+	if err != nil {
+		totalErrorCount++
+		fmt.Println(fmt.Sprintf("Data:%v Error:%v Sql:%s", createRoleKeepData, err, querySql))
+	} else {
+		totalSuccessCount++
+	}
+
+	totalCount++
 }
 
 func getServerKeepNum(day int, date time.Time, userIds []string) (keepNum int) {
@@ -304,4 +386,21 @@ func SmartPrint(i interface{}) {
 		fmt.Print(v)
 		fmt.Println()
 	}
+}
+
+func resolveSecond(second int64) (time string) {
+
+	minute := second / 60
+
+	hour := minute / 60
+
+	minute = minute % 60
+
+	second = second - hour*3600 - minute*60
+
+	time = fmt.Sprintf("%d:%d:%d", hour, minute, second)
+
+	//fmt.Println(time)
+
+	return
 }
