@@ -77,13 +77,13 @@ func main() {
 
 	date := time.Now().AddDate(0, 0, -1)
 
-	fmt.Println(fmt.Sprintf("Task begin StartDate:%s EndDate:%s RunDate:%s", date.AddDate(0, 0, -90).Format("2006-01-02"), date.Format("2006-01-02"), time.Now().Format("2006-01-02 15:04:05")))
+	fmt.Println(fmt.Sprintf("Task begin StartDate:%s EndDate:%s RunDate:%s", date.AddDate(0, 0, -89).Format("2006-01-02"), date.Format("2006-01-02"), time.Now().Format("2006-01-02 15:04:05")))
 
 	taskStartTime := time.Now().Unix()
 
 	serverDatas := getServerDatas()
 
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 90; i++ {
 
 		//whether database is busy
 		for {
