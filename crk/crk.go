@@ -111,7 +111,8 @@ func main() {
 
 	serverDatas := getServerDatas()
 
-	for i := 0; i < 90; i++ {
+	//left over one week
+	for i := 0; i < 97; i++ {
 
 		//whether database is busy
 		for {
