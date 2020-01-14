@@ -227,7 +227,7 @@ func startTask() {
 		userIds := getUserIds(channelData.UserDatas)
 
 		if len(userIds) == 0 {
-			failureLogger.Output(0, fmt.Sprintf("ChannelId:%d Error:UserData is empty", channelData.ChannelId))
+			//failureLogger.Output(0, fmt.Sprintf("ChannelId:%d Error:UserData is empty", channelData.ChannelId))
 			continue
 		}
 
