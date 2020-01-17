@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"reflect"
 	"strings"
@@ -153,6 +154,8 @@ func main() {
 			if len(userIds) == 0 {
 				continue
 			}
+
+			//fmt.Println(userIds)
 
 			if typeEffective == "on" {
 
@@ -463,9 +466,10 @@ func getServerDetailDatas(serverData ServerData, startTime int64, endTime int64)
 
 	field := "distinct u.user_id"
 
-	url := fmt.Sprintf("http://dj.cj655.com/api.php?m=player&a=admin_role_array8&where=%s&field=%s", where3, field)
+	//url := fmt.Sprintf("http://dj.cj655.com/api.php?m=player&a=admin_role_array8&where=%s&field=%s", where3, field)
+	//resp, err := http.Get(url)
 
-	resp, err := http.Get(url)
+	resp, err := http.PostForm("http://dj.cj655.com/api.php?m=player&a=admin_role_array8", url.Values{"where": {where3}, "field": {field}})
 
 	if err != nil {
 		fmt.Println(err)
