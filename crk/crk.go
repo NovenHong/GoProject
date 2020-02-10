@@ -2,32 +2,37 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"flag"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/techoner/gophp/serialize"
-	"io/ioutil"
 	"math"
-	"net/http"
-	"net/url"
 	"os"
 	"reflect"
 	"strings"
 	"time"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
-const (
-	USERNAME = "root"
-	//PASSWORD = ""//game123456
-	NETWORK  = "tcp"
-	SERVER   = "localhost"
-	PORT     = 3306
-	DATABASE = "cj655"
+var (
+	USERNAME string = "root"
+	PASSWORD string = "" //game123456
+	NETWORK  string = "tcp"
+	SERVER   string = "localhost"
+	PORT     int    = 3306
+	DATABASE string = "cj655"
 )
 
-var PASSWORD string = ""
+var (
+	USERNAME2 string = "cj655"
+	PASSWORD2 string = "game123456" //game123456
+	NETWORK2  string = "tcp"
+	SERVER2   string = "120.132.31.31"
+	PORT2     int    = 3306
+	DATABASE2 string = "cj655"
+)
+
 var DB *sql.DB
+var DB2 *sql.DB
 var err error
 var maxConnections int
 var waitDBNotBusyCount int
@@ -46,7 +51,7 @@ type ServerData struct {
 }
 
 type ServerDetailData struct {
-	UserId string `json:"user_id"`
+	UserId string `db:"user_id"`
 }
 
 type CreateRoleKeepData struct {
@@ -90,6 +95,7 @@ func init() {
 	}
 
 	DB = openDB()
+	DB2 = openDB2()
 
 	loc, _ = time.LoadLocation("Local")
 
@@ -209,6 +215,21 @@ func openDB() (DB *sql.DB) {
 		row := DB.QueryRow(`show variables like "max_connections"`)
 		row.Scan(&variableName, &maxConnections)
 	}
+
+	return
+}
+
+func openDB2() (DB2 *sql.DB) {
+	dsn := fmt.Sprintf("%s:%s@%s(%s:%d)/%s", USERNAME2, PASSWORD2, NETWORK2, SERVER2, PORT2, DATABASE2)
+	DB2, err = sql.Open("mysql", dsn)
+
+	if err != nil {
+		panic(fmt.Sprintf("Open mysql failed,Error:%v\n", err))
+	}
+
+	DB2.SetConnMaxLifetime(100 * time.Second) //最大连接周期，超过时间的连接就close
+	DB2.SetMaxOpenConns(100)                  //设置最大连接数
+	DB2.SetMaxIdleConns(16)                   //设置闲置连接数
 
 	return
 }
@@ -453,32 +474,39 @@ func getUserIds(serverDetailDatas []ServerDetailData) (userIds []string) {
 
 func getServerDetailDatas(serverData ServerData, startTime int64, endTime int64) (serverDetailDatas []ServerDetailData) {
 
-	var where string
+	var querySql string
 	if typeEffective == "on" {
-		where = fmt.Sprintf("ur.server_id = %d AND (ur.dabiao_time BETWEEN %d AND %d) AND ur.is_effective = 1", serverData.ServerId, startTime, endTime)
+		querySql = fmt.Sprintf(
+			`SELECT distinct u.user_id 
+			FROM gc_user_role as ur LEFT JOIN gc_user as u on ur.username = u.username 
+			WHERE ur.server_id = %d AND (ur.dabiao_time BETWEEN %d AND %d) AND ur.is_effective = 1`,
+			serverData.ServerId, startTime, endTime,
+		)
 	} else {
-		where = fmt.Sprintf("ur.server_id = %d AND (ur.add_time BETWEEN %d AND %d)", serverData.ServerId, startTime, endTime)
+		querySql = fmt.Sprintf(
+			`SELECT distinct u.user_id 
+			FROM gc_user_role as ur LEFT JOIN gc_user as u on ur.username = u.username 
+			WHERE ur.server_id = %d AND (ur.add_time BETWEEN %d AND %d)`,
+			serverData.ServerId, startTime, endTime,
+		)
 	}
 
-	where2, _ := serialize.Marshal(where)
-
-	where3 := string(where2)
-
-	field := "distinct u.user_id"
-
-	//url := fmt.Sprintf("http://dj.cj655.com/api.php?m=player&a=admin_role_array8&where=%s&field=%s", where3, field)
-	//resp, err := http.Get(url)
-
-	resp, err := http.PostForm("http://dj.cj655.com/api.php?m=player&a=admin_role_array8", url.Values{"where": {where3}, "field": {field}})
+	rows, err := DB2.Query(querySql)
 
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Println(fmt.Sprintf("Get server data detail error, Error:%s", err))
 	}
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	serverDetailData := new(ServerDetailData)
 
-	_ = json.Unmarshal(body, &serverDetailDatas)
+	for rows.Next() {
+		rows.Scan(&serverDetailData.UserId)
+		serverDetailDatas = append(serverDetailDatas, *serverDetailData)
+	}
+
+	defer func() {
+		rows.Close()
+	}()
 
 	return
 
