@@ -54,7 +54,6 @@ type ChannelDimensionData struct {
 	Date                       string
 	EffectiveNum               int
 	EffectiveNum130149         int
-	RegEffectiveNum            int
 	SameUniqueFlagUserCount    int
 	SameIpUserCount            int
 	OneLoginEffectiveUserCount int
@@ -182,7 +181,6 @@ func startTask(startTime int64, endTime int64) {
 		channelDimensionData.Date = unixTimeToDate(startTime)
 		channelDimensionData.EffectiveNum = channelMonthCountData.EffectiveNum
 		channelDimensionData.EffectiveNum130149 = channelMonthCountData.EffectiveNum130149
-		channelDimensionData.RegEffectiveNum = len(channelData.RoleIds)
 		channelDimensionData.SameUniqueFlagUserCount = channelUserLoginData.SameUniqueFlagUserCount
 		channelDimensionData.SameIpUserCount = channelUserLoginData.SameIpUserCount
 		channelDimensionData.OneLoginEffectiveUserCount = channelUserLoginData.OneLoginEffectiveUserCount
@@ -215,25 +213,23 @@ func saveChannelDimensionData(channelDimensionData ChannelDimensionData) {
 	if id := isExistChannelDimensionData(channelDimensionData); id == 0 {
 		_, err = DB.Exec(
 			`insert INTO gc_channel_dimension_data(
-				channel_id,date_time,date,effective_num_130_149,effective_num,reg_effective_num,same_unique_flag_user_count,same_ip_user_count,one_login_effective_user_count,silver_count) 
-				values(?,?,?,?,?,?,?,?,?,?)`,
+				channel_id,date_time,date,effective_num_130_149,effective_num,same_unique_flag_user_count,same_ip_user_count,one_login_effective_user_count,silver_count) 
+				values(?,?,?,?,?,?,?,?,?)`,
 			channelDimensionData.ChannelId,
 			channelDimensionData.DateTime,
 			channelDimensionData.Date,
 			channelDimensionData.EffectiveNum130149,
 			channelDimensionData.EffectiveNum,
-			channelDimensionData.RegEffectiveNum,
 			channelDimensionData.SameUniqueFlagUserCount,
 			channelDimensionData.SameIpUserCount,
 			channelDimensionData.OneLoginEffectiveUserCount,
 			channelDimensionData.SilverCount)
 	} else {
 		_, err = DB.Exec(`UPDATE gc_channel_dimension_data SET 
-		effective_num_130_149 = ?,effective_num = ?,reg_effective_num = ?,same_unique_flag_user_count = ?,
+		effective_num_130_149 = ?,effective_num = ?,same_unique_flag_user_count = ?,
 		same_ip_user_count = ?,one_login_effective_user_count = ?,silver_count = ? WHERE id=?`,
 			channelDimensionData.EffectiveNum130149,
 			channelDimensionData.EffectiveNum,
-			channelDimensionData.RegEffectiveNum,
 			channelDimensionData.SameUniqueFlagUserCount,
 			channelDimensionData.SameIpUserCount,
 			channelDimensionData.OneLoginEffectiveUserCount,
