@@ -46,6 +46,7 @@ type ChannelUserOnlineData struct {
 	RoleId        string
 	OnlineTime    int
 	LoginDayCount int
+	AveOnlineTime int
 }
 
 type ChannelDimensionData struct {
@@ -264,19 +265,21 @@ func isExistChannelUserOnlineData(channelUserOnlineData ChannelUserOnlineData) (
 func saveChannelUserOnlineData(channelUserOnlineData ChannelUserOnlineData) {
 	if id := isExistChannelUserOnlineData(channelUserOnlineData); id == 0 {
 		DB.Exec(
-			"insert INTO gc_channel_user_online(channel_id,date_time,date,user_id,role_id,online_time,login_day_count) values(?,?,?,?,?,?,?)",
+			"insert INTO gc_channel_user_online(channel_id,date_time,date,user_id,role_id,online_time,login_day_count,ave_online_time) values(?,?,?,?,?,?,?,?)",
 			channelUserOnlineData.ChannelId,
 			channelUserOnlineData.DateTime,
 			channelUserOnlineData.Date,
 			channelUserOnlineData.UserId,
 			channelUserOnlineData.RoleId,
 			channelUserOnlineData.OnlineTime,
-			channelUserOnlineData.LoginDayCount)
+			channelUserOnlineData.LoginDayCount,
+			channelUserOnlineData.AveOnlineTime)
 	} else {
 		DB.Exec(
-			"UPDATE gc_channel_user_online SET online_time = ?,login_day_count = ? WHERE id=?",
+			"UPDATE gc_channel_user_online SET online_time = ?,login_day_count = ?,ave_online_time = ? WHERE id=?",
 			channelUserOnlineData.OnlineTime,
 			channelUserOnlineData.LoginDayCount,
+			channelUserOnlineData.AveOnlineTime,
 			id)
 	}
 }
@@ -315,6 +318,9 @@ func getChannelUserOnlineDatas(channelData ChannelData, startTime int64, endTime
 		channelUserOnlineData.RoleId = roleId
 		channelUserOnlineData.OnlineTime = totalOnlineTime
 		channelUserOnlineData.LoginDayCount = loginDayCount
+		if loginDayCount > 0 {
+			channelUserOnlineData.AveOnlineTime = totalOnlineTime / loginDayCount
+		}
 
 		//fmt.Println(channelUserOnlineData)
 		//os.Exit(0)
