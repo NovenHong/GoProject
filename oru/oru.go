@@ -19,6 +19,8 @@ type UserData struct {
 type OrderUserData struct {
 	UserId         int64   `db:"user_id"`
 	Username       string  `db:"username"`
+	GameId         int64   `db:"game_id"`
+	ServerId       int64   `db:"server_id"`
 	ChargeSum      float32 `db:"charge_sum"`
 	LastChargeTime int     `db:"last_charge_time"`
 }
@@ -34,6 +36,8 @@ type UserRegionData struct {
 type OrderRegionUserData struct {
 	UserId         int64
 	Username       string
+	GameId         int64
+	ServerId       int64
 	Region         int
 	ChargeSum      float32
 	LastLoginTime  int
@@ -114,6 +118,8 @@ func main() {
 			orderRegionUserData := new(OrderRegionUserData)
 			orderRegionUserData.UserId = userData.UserId
 			orderRegionUserData.Username = userData.Username
+			orderRegionUserData.GameId = orderUserData.GameId
+			orderRegionUserData.ServerId = orderUserData.ServerId
 			orderRegionUserData.LastLoginTime = userData.LastLoginTime
 			orderRegionUserData.ChargeSum = orderUserData.ChargeSum
 			orderRegionUserData.LastChargeTime = orderUserData.LastChargeTime
@@ -148,10 +154,12 @@ func saveOrderRegionUserData(orderRegionUserData OrderRegionUserData) {
 	var err error
 
 	if id := isExistOrderRegionUserData(orderRegionUserData); id == 0 {
-		_, err = DB.Exec(`INSERT INTO gc_gmorder_region_user(user_id,username,region,charge_sum,last_login_time,last_charge_time,day_date,day_charge_sum) 
-		VALUES(?,?,?,?,?,?,?,?)`,
+		_, err = DB.Exec(`INSERT INTO gc_gmorder_region_user(user_id,username,game_id,server_id,region,charge_sum,last_login_time,last_charge_time,day_date,day_charge_sum) 
+		VALUES(?,?,?,?,?,?,?,?,?,?)`,
 			orderRegionUserData.UserId,
 			orderRegionUserData.Username,
+			orderRegionUserData.GameId,
+			orderRegionUserData.ServerId,
 			orderRegionUserData.Region,
 			orderRegionUserData.ChargeSum,
 			orderRegionUserData.LastLoginTime,
@@ -160,8 +168,9 @@ func saveOrderRegionUserData(orderRegionUserData OrderRegionUserData) {
 			orderRegionUserData.DayChargeSum,
 		)
 	} else {
-		_, err = DB.Exec(`UPDATE gc_gmorder_region_user SET region = ?,charge_sum = ?,last_login_time = ?,
+		_, err = DB.Exec(`UPDATE gc_gmorder_region_user SET server_id = ?,region = ?,charge_sum = ?,last_login_time = ?,
 		last_charge_time = ?,day_date = ?,day_charge_sum = ? WHERE id=?`,
+			orderRegionUserData.ServerId,
 			orderRegionUserData.Region,
 			orderRegionUserData.ChargeSum,
 			orderRegionUserData.LastLoginTime,
@@ -213,11 +222,20 @@ func getUserRegion(userId int64) (userRegionData UserRegionData) {
 }
 
 func getOrderUserData(userId int64) (orderUserData OrderUserData) {
-	querySql := fmt.Sprintf(`SELECT user_id,username,sum(money/100) charge_sum,max(create_time) last_charge_time 
+	querySql := fmt.Sprintf(`SELECT user_id,username,sum(money/100) charge_sum,max(create_time) last_charge_time,
+	substring_index(group_concat(distinct game_id order by create_time desc),',',1) game_id,
+	substring_index(group_concat(distinct game_server_id order by create_time desc),',',1) server_id
 	FROM gc_order WHERE (status = 1) AND (channel = 1) AND (create_time > 1556640000) AND (user_id = %d)`, userId)
 
 	row := DB.QueryRow(querySql)
-	row.Scan(&orderUserData.UserId, &orderUserData.Username, &orderUserData.ChargeSum, &orderUserData.LastChargeTime)
+	row.Scan(
+		&orderUserData.UserId,
+		&orderUserData.Username,
+		&orderUserData.ChargeSum,
+		&orderUserData.LastChargeTime,
+		&orderUserData.GameId,
+		&orderUserData.ServerId,
+	)
 
 	return
 }
