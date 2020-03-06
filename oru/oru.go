@@ -16,16 +16,22 @@ type UserData struct {
 	LastLoginTime int    `db:"last_login_time"`
 }
 
-type OrderUserData struct {
+type UserRoleData struct {
+	Username string `db:"username"`
+	RoleId   string `db:"role_id"`
+}
+
+type UserRoleOrderData struct {
 	UserId         int64   `db:"user_id"`
 	Username       string  `db:"username"`
+	RoleId         string  `db:"role_id"`
 	GameId         int64   `db:"game_id"`
 	ServerId       int64   `db:"server_id"`
 	ChargeSum      float32 `db:"charge_sum"`
 	LastChargeTime int     `db:"last_charge_time"`
 }
 
-type UserRegionData struct {
+type UserRoleRegionData struct {
 	UserId       int64   `db:"user_id"`
 	Username     string  `db:"username"`
 	DayDate      string  `db:"day_date"`
@@ -36,6 +42,7 @@ type UserRegionData struct {
 type OrderRegionUserData struct {
 	UserId         int64
 	Username       string
+	RoleId         string
 	GameId         int64
 	ServerId       int64
 	Region         int
@@ -55,7 +62,17 @@ var (
 	DATABASE string = "cj655"
 )
 
+var (
+	USERNAME2 string = "cj655"
+	PASSWORD2 string = "game123456" //game123456
+	NETWORK2  string = "tcp"
+	SERVER2   string = "120.132.31.31"
+	PORT2     int    = 3306
+	DATABASE2 string = "cj655"
+)
+
 var DB *sql.DB
+var DB2 *sql.DB
 var myPageNum int
 var currentPage int
 var totalCount int64
@@ -71,6 +88,7 @@ func init() {
 	}
 
 	DB = openDB()
+	DB2 = openDB2()
 
 	flag.IntVar(&myPageNum, "my-page-num", 0, "每页数量")
 	flag.IntVar(&currentPage, "current-page", 0, "当前页码")
@@ -82,9 +100,9 @@ func main() {
 
 	allStartTime := time.Now().Unix()
 
-	count := getTotalUserCount()
+	count := getTotalUserRoleCount()
 
-	pageNum := 100000
+	pageNum := 10000
 	if myPageNum > 0 {
 		pageNum = myPageNum
 	}
@@ -100,32 +118,39 @@ func main() {
 		startLimit := (i - 1) * pageNum
 		endLimit := pageNum
 
-		userDatas := getUserDatas(startLimit, endLimit)
+		userRoleDatas := getUserRoleDatas(startLimit, endLimit)
 
 		var orderRegionUserDatas []OrderRegionUserData
 
-		for _, userData := range userDatas {
-			orderUserData := getOrderUserData(userData.UserId)
-			if orderUserData.ChargeSum == 0 {
+		for _, userRoleData := range userRoleDatas {
+
+			userData := getUserData(userRoleData.Username)
+			if userData.UserId == 0 {
 				continue
 			}
 
-			userRegionData := getUserRegion(userData.UserId)
-			if userRegionData.Region == 0 {
+			userRoleOrderData := getUserRoleOrderData(userRoleData.RoleId)
+			if userRoleOrderData.ChargeSum == 0 {
+				continue
+			}
+
+			userRoleRegionData := getUserRoleRegionData(userRoleData.RoleId)
+			if userRoleRegionData.Region == 0 {
 				continue
 			}
 
 			orderRegionUserData := new(OrderRegionUserData)
 			orderRegionUserData.UserId = userData.UserId
 			orderRegionUserData.Username = userData.Username
-			orderRegionUserData.GameId = orderUserData.GameId
-			orderRegionUserData.ServerId = orderUserData.ServerId
+			orderRegionUserData.RoleId = userRoleData.RoleId
+			orderRegionUserData.GameId = userRoleOrderData.GameId
+			orderRegionUserData.ServerId = userRoleOrderData.ServerId
 			orderRegionUserData.LastLoginTime = userData.LastLoginTime
-			orderRegionUserData.ChargeSum = orderUserData.ChargeSum
-			orderRegionUserData.LastChargeTime = orderUserData.LastChargeTime
-			orderRegionUserData.Region = userRegionData.Region
-			orderRegionUserData.DayDate = userRegionData.DayDate
-			orderRegionUserData.DayChargeSum = userRegionData.DayChargeSum
+			orderRegionUserData.ChargeSum = userRoleOrderData.ChargeSum
+			orderRegionUserData.LastChargeTime = userRoleOrderData.LastChargeTime
+			orderRegionUserData.Region = userRoleRegionData.Region
+			orderRegionUserData.DayDate = userRoleRegionData.DayDate
+			orderRegionUserData.DayChargeSum = userRoleRegionData.DayChargeSum
 
 			orderRegionUserDatas = append(orderRegionUserDatas, *orderRegionUserData)
 		}
@@ -142,7 +167,7 @@ func main() {
 }
 
 func isExistOrderRegionUserData(orderRegionUserData OrderRegionUserData) (id int64) {
-	querySql := fmt.Sprintf(`SELECT id FROM gc_gmorder_region_user WHERE user_id = %d LIMIT 1`, orderRegionUserData.UserId)
+	querySql := fmt.Sprintf(`SELECT id FROM gc_gmorder_region_user WHERE role_id = '%s' LIMIT 1`, orderRegionUserData.RoleId)
 
 	row := DB.QueryRow(querySql)
 	row.Scan(&id)
@@ -154,10 +179,11 @@ func saveOrderRegionUserData(orderRegionUserData OrderRegionUserData) {
 	var err error
 
 	if id := isExistOrderRegionUserData(orderRegionUserData); id == 0 {
-		_, err = DB.Exec(`INSERT INTO gc_gmorder_region_user(user_id,username,game_id,server_id,region,charge_sum,last_login_time,last_charge_time,day_date,day_charge_sum) 
-		VALUES(?,?,?,?,?,?,?,?,?,?)`,
+		_, err = DB.Exec(`INSERT INTO gc_gmorder_region_user(user_id,username,role_id,game_id,server_id,region,charge_sum,last_login_time,last_charge_time,day_date,day_charge_sum) 
+		VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
 			orderRegionUserData.UserId,
 			orderRegionUserData.Username,
+			orderRegionUserData.RoleId,
 			orderRegionUserData.GameId,
 			orderRegionUserData.ServerId,
 			orderRegionUserData.Region,
@@ -191,70 +217,80 @@ func saveOrderRegionUserData(orderRegionUserData OrderRegionUserData) {
 	totalCount++
 }
 
-func getUserRegion(userId int64) (userRegionData UserRegionData) {
+func getUserRoleRegionData(roleId string) (userRoleRegionData UserRoleRegionData) {
 	querySql := fmt.Sprintf(`SELECT user_id,username,FROM_UNIXTIME(create_time,'%%Y-%%m-%%d') day_date,SUM(money/100) sum 
-	FROM gc_order WHERE status=1 AND channel=1 AND user_id=%d GROUP BY day_date ORDER BY sum DESC LIMIT 1`, userId)
+	FROM gc_order WHERE status=1 AND channel=1 AND role_id = '%s' GROUP BY day_date ORDER BY sum DESC LIMIT 1`, roleId)
 
 	row := DB.QueryRow(querySql)
-	row.Scan(&userRegionData.UserId, &userRegionData.Username, &userRegionData.DayDate, &userRegionData.DayChargeSum)
+	row.Scan(&userRoleRegionData.UserId, &userRoleRegionData.Username, &userRoleRegionData.DayDate, &userRoleRegionData.DayChargeSum)
 
 	//用户付费区间 1: 6-98 2: 99-328 3: 329-647 4: 648-2000 5: 2001-5000 6: 5001+
-	if userRegionData.DayChargeSum >= 6 && userRegionData.DayChargeSum <= 98 {
-		userRegionData.Region = 1
+	if userRoleRegionData.DayChargeSum >= 6 && userRoleRegionData.DayChargeSum <= 98 {
+		userRoleRegionData.Region = 1
 	}
-	if userRegionData.DayChargeSum >= 99 && userRegionData.DayChargeSum <= 328 {
-		userRegionData.Region = 2
+	if userRoleRegionData.DayChargeSum >= 99 && userRoleRegionData.DayChargeSum <= 328 {
+		userRoleRegionData.Region = 2
 	}
-	if userRegionData.DayChargeSum >= 329 && userRegionData.DayChargeSum <= 647 {
-		userRegionData.Region = 3
+	if userRoleRegionData.DayChargeSum >= 329 && userRoleRegionData.DayChargeSum <= 647 {
+		userRoleRegionData.Region = 3
 	}
-	if userRegionData.DayChargeSum >= 648 && userRegionData.DayChargeSum <= 2000 {
-		userRegionData.Region = 4
+	if userRoleRegionData.DayChargeSum >= 648 && userRoleRegionData.DayChargeSum <= 2000 {
+		userRoleRegionData.Region = 4
 	}
-	if userRegionData.DayChargeSum >= 2001 && userRegionData.DayChargeSum <= 5000 {
-		userRegionData.Region = 5
+	if userRoleRegionData.DayChargeSum >= 2001 && userRoleRegionData.DayChargeSum <= 5000 {
+		userRoleRegionData.Region = 5
 	}
-	if userRegionData.DayChargeSum >= 5001 {
-		userRegionData.Region = 6
+	if userRoleRegionData.DayChargeSum >= 5001 {
+		userRoleRegionData.Region = 6
 	}
 
 	return
 }
 
-func getOrderUserData(userId int64) (orderUserData OrderUserData) {
-	querySql := fmt.Sprintf(`SELECT user_id,username,sum(money/100) charge_sum,max(create_time) last_charge_time,
-	substring_index(group_concat(distinct game_id order by create_time desc),',',1) game_id,
+func getUserRoleOrderData(roleId string) (userRoleOrderData UserRoleOrderData) {
+	querySql := fmt.Sprintf(`SELECT user_id,username,sum(money/100) charge_sum,max(create_time) last_charge_time,game_id,role_id, 
 	substring_index(group_concat(distinct game_server_id order by create_time desc),',',1) server_id
-	FROM gc_order WHERE (status = 1) AND (channel = 1) AND (create_time > 1556640000) AND (user_id = %d)`, userId)
+	FROM gc_order WHERE (status = 1) AND (channel = 1) AND (create_time > 1556640000) AND (role_id = '%s')`, roleId)
 
 	row := DB.QueryRow(querySql)
 	row.Scan(
-		&orderUserData.UserId,
-		&orderUserData.Username,
-		&orderUserData.ChargeSum,
-		&orderUserData.LastChargeTime,
-		&orderUserData.GameId,
-		&orderUserData.ServerId,
+		&userRoleOrderData.UserId,
+		&userRoleOrderData.Username,
+		&userRoleOrderData.ChargeSum,
+		&userRoleOrderData.LastChargeTime,
+		&userRoleOrderData.GameId,
+		&userRoleOrderData.RoleId,
+		&userRoleOrderData.ServerId,
 	)
 
 	return
 }
 
-func getUserDatas(startLimit int, endLimit int) (userDatas []UserData) {
-	querySql := fmt.Sprintf(`SELECT user_id,username,last_login_time FROM gc_user LIMIT %d,%d`, startLimit, endLimit)
+func getUserData(username string) (userData UserData) {
+	querySql := fmt.Sprintf(`SELECT user_id,username,last_login_time FROM gc_user WHERE username = '%s'`, username)
 
-	rows, err := DB.Query(querySql)
+	row := DB.QueryRow(querySql)
+
+	row.Scan(&userData.UserId, &userData.Username, &userData.LastLoginTime)
+
+	return
+}
+
+func getUserRoleDatas(startLimit int, endLimit int) (userRoleDatas []UserRoleData) {
+	querySql := fmt.Sprintf(`SELECT username,role_id FROM gc_user_role LIMIT %d,%d`, startLimit, endLimit)
+
+	rows, err := DB2.Query(querySql)
 
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	userData := new(UserData)
+	userRoleData := new(UserRoleData)
 
 	for rows.Next() {
-		rows.Scan(&userData.UserId, &userData.Username, &userData.LastLoginTime)
-		userDatas = append(userDatas, *userData)
+		rows.Scan(&userRoleData.Username, &userRoleData.RoleId)
+		userRoleDatas = append(userRoleDatas, *userRoleData)
 	}
 
 	defer func() {
@@ -264,10 +300,10 @@ func getUserDatas(startLimit int, endLimit int) (userDatas []UserData) {
 	return
 }
 
-func getTotalUserCount() (count int) {
-	querySql := `SELECT count(*) count FROM gc_user LIMIT 1`
+func getTotalUserRoleCount() (count int) {
+	querySql := `SELECT count(*) count FROM gc_user_role LIMIT 1`
 
-	row := DB.QueryRow(querySql)
+	row := DB2.QueryRow(querySql)
 	row.Scan(&count)
 
 	return
@@ -284,6 +320,21 @@ func openDB() (DB *sql.DB) {
 	DB.SetConnMaxLifetime(100 * time.Second) //最大连接周期，超过时间的连接就close
 	DB.SetMaxOpenConns(100)                  //设置最大连接数
 	DB.SetMaxIdleConns(16)                   //设置闲置连接数
+
+	return
+}
+
+func openDB2() (DB2 *sql.DB) {
+	dsn := fmt.Sprintf("%s:%s@%s(%s:%d)/%s", USERNAME2, PASSWORD2, NETWORK2, SERVER2, PORT2, DATABASE2)
+	DB2, err := sql.Open("mysql", dsn)
+
+	if err != nil {
+		panic(fmt.Sprintf("Open mysql failed,Error:%v\n", err))
+	}
+
+	DB2.SetConnMaxLifetime(100 * time.Second) //最大连接周期，超过时间的连接就close
+	DB2.SetMaxOpenConns(100)                  //设置最大连接数
+	DB2.SetMaxIdleConns(16)                   //设置闲置连接数
 
 	return
 }
