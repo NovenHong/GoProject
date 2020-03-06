@@ -75,6 +75,7 @@ var DB *sql.DB
 var DB2 *sql.DB
 var myPageNum int
 var currentPage int
+var typeTotal string
 var totalCount int64
 var totalSuccessCount int64
 var totalErrorCount int64
@@ -92,6 +93,7 @@ func init() {
 
 	flag.IntVar(&myPageNum, "my-page-num", 0, "每页数量")
 	flag.IntVar(&currentPage, "current-page", 0, "当前页码")
+	flag.StringVar(&typeTotal, "type-total", "off", "历史总充值模式")
 	flag.Parse()
 }
 
@@ -134,29 +136,54 @@ func main() {
 				continue
 			}
 
-			userRoleRegionData := getUserRoleRegionData(userRoleData.RoleId)
-			if userRoleRegionData.Region == 0 {
-				continue
+			if typeTotal == "on" {
+				region := getUserRoleChargeSumRegion(userRoleOrderData.ChargeSum)
+				if region == 0 {
+					continue
+				}
+
+				orderRegionUserData := new(OrderRegionUserData)
+				orderRegionUserData.UserId = userData.UserId
+				orderRegionUserData.Username = userData.Username
+				orderRegionUserData.RoleId = userRoleData.RoleId
+				orderRegionUserData.GameId = userRoleOrderData.GameId
+				orderRegionUserData.ServerId = userRoleOrderData.ServerId
+				orderRegionUserData.LastLoginTime = userData.LastLoginTime
+				orderRegionUserData.ChargeSum = userRoleOrderData.ChargeSum
+				orderRegionUserData.LastChargeTime = userRoleOrderData.LastChargeTime
+				orderRegionUserData.Region = region
+
+				orderRegionUserDatas = append(orderRegionUserDatas, *orderRegionUserData)
+			} else {
+				userRoleRegionData := getUserRoleRegionData(userRoleData.RoleId)
+				if userRoleRegionData.Region == 0 {
+					continue
+				}
+
+				orderRegionUserData := new(OrderRegionUserData)
+				orderRegionUserData.UserId = userData.UserId
+				orderRegionUserData.Username = userData.Username
+				orderRegionUserData.RoleId = userRoleData.RoleId
+				orderRegionUserData.GameId = userRoleOrderData.GameId
+				orderRegionUserData.ServerId = userRoleOrderData.ServerId
+				orderRegionUserData.LastLoginTime = userData.LastLoginTime
+				orderRegionUserData.ChargeSum = userRoleOrderData.ChargeSum
+				orderRegionUserData.LastChargeTime = userRoleOrderData.LastChargeTime
+				orderRegionUserData.Region = userRoleRegionData.Region
+				orderRegionUserData.DayDate = userRoleRegionData.DayDate
+				orderRegionUserData.DayChargeSum = userRoleRegionData.DayChargeSum
+
+				orderRegionUserDatas = append(orderRegionUserDatas, *orderRegionUserData)
 			}
 
-			orderRegionUserData := new(OrderRegionUserData)
-			orderRegionUserData.UserId = userData.UserId
-			orderRegionUserData.Username = userData.Username
-			orderRegionUserData.RoleId = userRoleData.RoleId
-			orderRegionUserData.GameId = userRoleOrderData.GameId
-			orderRegionUserData.ServerId = userRoleOrderData.ServerId
-			orderRegionUserData.LastLoginTime = userData.LastLoginTime
-			orderRegionUserData.ChargeSum = userRoleOrderData.ChargeSum
-			orderRegionUserData.LastChargeTime = userRoleOrderData.LastChargeTime
-			orderRegionUserData.Region = userRoleRegionData.Region
-			orderRegionUserData.DayDate = userRoleRegionData.DayDate
-			orderRegionUserData.DayChargeSum = userRoleRegionData.DayChargeSum
-
-			orderRegionUserDatas = append(orderRegionUserDatas, *orderRegionUserData)
 		}
 
 		for _, orderRegionUserData := range orderRegionUserDatas {
-			saveOrderRegionUserData(orderRegionUserData)
+			if typeTotal == "on" {
+				saveOrderRegionUserData2(orderRegionUserData)
+			} else {
+				saveOrderRegionUserData(orderRegionUserData)
+			}
 		}
 	}
 
@@ -164,6 +191,53 @@ func main() {
 
 	fmt.Println(fmt.Sprintf("All task is compeleted,SuccessRow:%d ErrorRow:%d TotalRow:%d Time:%s",
 		totalSuccessCount, totalErrorCount, totalCount, resolveSecond(allEndTime-allStartTime)))
+}
+
+func isExistOrderRegionUserData2(orderRegionUserData OrderRegionUserData) (id int64) {
+	querySql := fmt.Sprintf(`SELECT id FROM gc_gmorder_region_user_2 WHERE role_id = '%s' LIMIT 1`, orderRegionUserData.RoleId)
+
+	row := DB.QueryRow(querySql)
+	row.Scan(&id)
+
+	return
+}
+
+func saveOrderRegionUserData2(orderRegionUserData OrderRegionUserData) {
+	var err error
+
+	if id := isExistOrderRegionUserData2(orderRegionUserData); id == 0 {
+		_, err = DB.Exec(`INSERT INTO gc_gmorder_region_user_2(user_id,username,role_id,game_id,server_id,region,charge_sum,last_login_time,last_charge_time) 
+		VALUES(?,?,?,?,?,?,?,?,?)`,
+			orderRegionUserData.UserId,
+			orderRegionUserData.Username,
+			orderRegionUserData.RoleId,
+			orderRegionUserData.GameId,
+			orderRegionUserData.ServerId,
+			orderRegionUserData.Region,
+			orderRegionUserData.ChargeSum,
+			orderRegionUserData.LastLoginTime,
+			orderRegionUserData.LastChargeTime,
+		)
+	} else {
+		_, err = DB.Exec(`UPDATE gc_gmorder_region_user_2 SET server_id = ?,region = ?,charge_sum = ?,last_login_time = ?,
+		last_charge_time = ? WHERE id=?`,
+			orderRegionUserData.ServerId,
+			orderRegionUserData.Region,
+			orderRegionUserData.ChargeSum,
+			orderRegionUserData.LastLoginTime,
+			orderRegionUserData.LastChargeTime,
+			id,
+		)
+	}
+
+	if err != nil {
+		totalErrorCount++
+		fmt.Println(err)
+	} else {
+		totalSuccessCount++
+	}
+
+	totalCount++
 }
 
 func isExistOrderRegionUserData(orderRegionUserData OrderRegionUserData) (id int64) {
@@ -215,6 +289,29 @@ func saveOrderRegionUserData(orderRegionUserData OrderRegionUserData) {
 	}
 
 	totalCount++
+}
+
+func getUserRoleChargeSumRegion(chargeSum float32) (region int) {
+	//用户付费区间 1: 98-1000 2: 1001-3000 3: 3001-9000 4: 9001-20000 5: 20001-50000 6: 50000+
+	if chargeSum >= 98 && chargeSum <= 1000 {
+		region = 1
+	}
+	if chargeSum >= 1001 && chargeSum <= 3000 {
+		region = 2
+	}
+	if chargeSum >= 3001 && chargeSum <= 9000 {
+		region = 3
+	}
+	if chargeSum >= 9001 && chargeSum <= 20000 {
+		region = 4
+	}
+	if chargeSum >= 20001 && chargeSum <= 50000 {
+		region = 5
+	}
+	if chargeSum >= 50000 {
+		region = 6
+	}
+	return
 }
 
 func getUserRoleRegionData(roleId string) (userRoleRegionData UserRoleRegionData) {
