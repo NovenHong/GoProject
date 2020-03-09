@@ -6,6 +6,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -59,6 +60,7 @@ var serverId int64
 var totalCount int64
 var totalSuccessCount int64
 var totalErrorCount int64
+var months []string
 
 //停充区间
 //1:8~10 2:11~13 3:14~16 4:17~19 5:20~22 6:23~25 7:26~28 8:29~31 9:32~34 10:35~37
@@ -94,7 +96,28 @@ func init() {
 	loc, _ = time.LoadLocation("Local")
 
 	flag.Int64Var(&serverId, "server-id", 0, "单个区服计算")
+	var month string
+	flag.StringVar(&month, "month", "", "当前的月份")
 	flag.Parse()
+
+	if month != "" {
+		months = strings.Split(month, ",")
+	} else {
+		months = append(months, time.Now().Format("2006-01"))
+	}
+
+	//1号统计上月数据
+	day := time.Now().Day()
+	if day == 1 {
+		curMonth := int(time.Now().Month())
+		lastMonth := curMonth - 1
+		curYear := int(time.Now().Year())
+		if lastMonth <= 0 {
+			lastMonth = 12
+			curYear = curYear - 1
+		}
+		months = append(months, fmt.Sprintf("%d-%d", curYear, lastMonth))
+	}
 }
 
 func main() {
@@ -103,22 +126,23 @@ func main() {
 
 	allStartTime := time.Now().Unix()
 
-	year, month, _ := time.Now().AddDate(0, -2, 0).Date()
+	for _, month := range months {
+		theTime, _ := time.ParseInLocation("2006-01", month, loc)
+		year, month, _ := theTime.AddDate(0, -2, 0).Date()
+		startTime := time.Date(year, month, 1, 0, 0, 0, 0, loc).Unix()
 
-	startTime := time.Date(year, month, 1, 0, 0, 0, 0, loc).Unix()
+		date := time.Date(theTime.Year(), theTime.Month(), 1, 0, 0, 0, 0, loc)
+		endTime := date.AddDate(0, 1, -1).Unix() + 86399
 
-	date := time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, loc)
-	endTime := date.AddDate(0, 1, -1).Unix() + 86399
+		serverDatas := getServerDatas(startTime, endTime)
 
-	serverDatas := getServerDatas(startTime, endTime)
+		for i := 1; i <= 20; i++ {
+			userLifeCycleDatas := getUserLifeCycleData(i, serverDatas, date)
 
-	for i := 1; i <= 20; i++ {
-		userLifeCycleDatas := getUserLifeCycleData(i, serverDatas, date)
-
-		for _, userLifeCycleData := range userLifeCycleDatas {
-			saveUserLifeCycleData(userLifeCycleData)
+			for _, userLifeCycleData := range userLifeCycleDatas {
+				saveUserLifeCycleData(userLifeCycleData)
+			}
 		}
-
 	}
 
 	allEndTime := time.Now().Unix()
