@@ -60,6 +60,9 @@ var serverId int64
 var totalCount int64
 var totalSuccessCount int64
 var totalErrorCount int64
+var taskCount int64
+var taskSuccessCount int64
+var taskErrorCount int64
 var months []string
 
 //停充区间
@@ -136,12 +139,24 @@ func main() {
 
 		serverDatas := getServerDatas(startTime, endTime)
 
+		fmt.Println(fmt.Sprintf(`Total server num : %d`, len(serverDatas)))
+
 		for i := 1; i <= 20; i++ {
+			taskCount = 0
+			taskSuccessCount = 0
+			taskErrorCount = 0
+
+			taskStartTime := time.Now().Unix()
+
 			userLifeCycleDatas := getUserLifeCycleData(i, serverDatas, date)
 
 			for _, userLifeCycleData := range userLifeCycleDatas {
 				saveUserLifeCycleData(userLifeCycleData)
 			}
+
+			taskEndTime := time.Now().Unix()
+			fmt.Println(fmt.Sprintf(`Task region-%d is compeleted,SuccessRow:%d ErrorRow:%d TotalRow:%d Time:%s`,
+				i, taskSuccessCount, taskErrorCount, taskCount, resolveSecond(taskEndTime-taskStartTime)))
 		}
 	}
 
@@ -180,12 +195,15 @@ func saveUserLifeCycleData(userLifeCycleData UserLifeCycleData) {
 
 	if err != nil {
 		totalErrorCount++
+		taskErrorCount++
 		fmt.Println(err)
 	} else {
 		totalSuccessCount++
+		taskSuccessCount++
 	}
 
 	totalCount++
+	taskCount++
 }
 
 func getUserLifeCycleData(region int, serverDatas []ServerData, date time.Time) (userLifeCycleDatas []UserLifeCycleData) {
