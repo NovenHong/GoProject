@@ -225,7 +225,7 @@ func getUserLifeCycleData(region int, serverDatas []ServerData, date time.Time) 
 		rangeStartTime := regionStartTime - (6 * 86400)
 		rangeEndTime := regionEndTime - (6 * 86400)
 
-		userRoleDatas := getServerUserRoles(serverData.ServerId, regionEndTime)
+		userRoleDatas := getServerUserRoles(serverData.GameId, serverData.ServerId, regionEndTime)
 
 		for _, userRoleData := range userRoleDatas {
 			if userRoleData.LastChargeTime > 0 && userRoleData.LastChargeTime >= rangeStartTime && userRoleData.LastChargeTime <= rangeEndTime {
@@ -254,7 +254,7 @@ func getUserLifeCycleData(region int, serverDatas []ServerData, date time.Time) 
 		rangeStartTime := regionStartTime - (3 * 86400)
 		rangeEndTime := regionEndTime - (3 * 86400)
 
-		userRoleDatas := getServerUserRoles(serverData.ServerId, regionEndTime)
+		userRoleDatas := getServerUserRoles(serverData.GameId, serverData.ServerId, regionEndTime)
 
 		for _, userRoleData := range userRoleDatas {
 			if userRoleData.LastLoginTime > 0 && userRoleData.LastLoginTime >= rangeStartTime && userRoleData.LastLoginTime <= rangeEndTime {
@@ -286,10 +286,17 @@ func getUserLifeCycleData(region int, serverDatas []ServerData, date time.Time) 
 	return
 }
 
-func getServerUserRoles(serverId int64, endTime int) (userRoleDatas []UserRoleData) {
-	querySql := fmt.Sprintf(`SELECT role_id,username FROM gc_user_role WHERE server_id = %d AND (add_time <= %d) AND role_id <> ''`, serverId, endTime)
+func getServerUserRoles(gameId int64, serverId int64, endTime int) (userRoleDatas []UserRoleData) {
+	//全部角色
+	// querySql := fmt.Sprintf(`SELECT role_id,username FROM gc_user_role WHERE server_id = %d AND (add_time <= %d) AND role_id <> ''`, serverId, endTime)
+	// rows, err := DB2.Query(querySql)
 
-	rows, err := DB2.Query(querySql)
+	//关注角色
+	querySql := fmt.Sprintf(`SELECT role_id,username FROM gc_gmnotice_role WHERE game_id = %d AND server_id = %d AND role_id <> ''`, gameId, serverId)
+	rows, err := DB.Query(querySql)
+
+	//fmt.Println(querySql)
+	//os.Exit(0)
 
 	if err != nil {
 		fmt.Println(err)
