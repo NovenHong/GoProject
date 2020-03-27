@@ -479,15 +479,15 @@ func getServerDetailDatas(serverData ServerData, startTime int64, endTime int64)
 		querySql = fmt.Sprintf(
 			`SELECT distinct u.user_id 
 			FROM gc_user_role as ur LEFT JOIN gc_user as u on ur.username = u.username 
-			WHERE ur.server_id = %d AND (ur.dabiao_time BETWEEN %d AND %d) AND ur.is_effective = 1`,
-			serverData.ServerId, startTime, endTime,
+			WHERE ur.game_id = %d AND ur.server_id = %d AND (ur.dabiao_time BETWEEN %d AND %d) AND (u.reg_time BETWEEN %d AND %d) AND ur.is_effective = 1`,
+			serverData.GameId, serverData.ServerId, startTime, endTime, startTime, endTime,
 		)
 	} else {
 		querySql = fmt.Sprintf(
 			`SELECT distinct u.user_id 
 			FROM gc_user_role as ur LEFT JOIN gc_user as u on ur.username = u.username 
-			WHERE ur.server_id = %d AND (ur.add_time BETWEEN %d AND %d)`,
-			serverData.ServerId, startTime, endTime,
+			WHERE ur.game_id = %d AND ur.server_id = %d AND (ur.add_time BETWEEN %d AND %d) AND (u.reg_time BETWEEN %d AND %d)`,
+			serverData.GameId, serverData.ServerId, startTime, endTime, startTime, endTime,
 		)
 	}
 
