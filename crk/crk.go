@@ -42,6 +42,7 @@ var totalCount int64 = 0
 var totalSuccessCount int64 = 0
 var totalErrorCount int64 = 0
 var typeEffective string
+var typeCharge string
 var serverId int64
 var myDate string
 
@@ -65,6 +66,7 @@ type CreateRoleKeepData struct {
 	KeepNum3  int
 	KeepNum7  int
 	KeepNum14 int
+	KeepNum20 int
 	KeepNum30 int
 	KeepNum60 int
 	KeepNum90 int
@@ -81,9 +83,27 @@ type EffectiveRoleKeepData struct {
 	KeepNum3     int
 	KeepNum7     int
 	KeepNum14    int
+	KeepNum20    int
 	KeepNum30    int
 	KeepNum60    int
 	KeepNum90    int
+}
+
+type ChargeRoleKeepData struct {
+	Id        int64
+	Date      string
+	DateTime  int64
+	GameId    int64
+	ServerId  int64
+	ChargeNum int
+	KeepNum1  int
+	KeepNum3  int
+	KeepNum7  int
+	KeepNum14 int
+	KeepNum20 int
+	KeepNum30 int
+	KeepNum60 int
+	KeepNum90 int
 }
 
 func init() {
@@ -100,6 +120,7 @@ func init() {
 	loc, _ = time.LoadLocation("Local")
 
 	flag.StringVar(&typeEffective, "type-effective", "off", "有效数模式")
+	flag.StringVar(&typeCharge, "type-charge", "off", "付费数模式")
 	flag.StringVar(&myDate, "my-date", "", "汇总日期")
 	flag.Int64Var(&serverId, "server-id", 0, "区服id")
 	flag.Parse()
@@ -164,7 +185,6 @@ func main() {
 			//fmt.Println(userIds)
 
 			if typeEffective == "on" {
-
 				effectiveRoleKeepData := getEffectiveRoleKeepData(serverData, userIds, theTime)
 
 				if id := isExistEffectiveRoleKeepData(effectiveRoleKeepData); id > 0 {
@@ -175,6 +195,17 @@ func main() {
 
 				saveEffectiveRoleKeepData(effectiveRoleKeepData)
 
+			} else if typeCharge == "on" {
+				chargeRoleKeepData := getChargeRoleKeepData(serverData, userIds, theTime)
+
+				// fmt.Println(chargeRoleKeepData)
+				// os.Exit(0)
+
+				if id := isExistChargeRoleKeepData(chargeRoleKeepData); id > 0 {
+					chargeRoleKeepData.Id = id
+				}
+
+				saveChargeRoleKeepData(chargeRoleKeepData)
 			} else {
 				createRoleKeepData := getCreateRoleKeepData(serverData, userIds, theTime)
 
@@ -247,6 +278,107 @@ func getCurrentDBConnections() (processlistCount int) {
 	return
 }
 
+func getChargeRoleKeepData(serverData ServerData, userIds []string, date time.Time) (chargeRoleKeepData ChargeRoleKeepData) {
+	chargeNum := len(userIds)
+
+	keepNum1 := getServerKeepNum(1, date, userIds)
+
+	keepNum3 := getServerKeepNum(3, date, userIds)
+
+	keepNum7 := getServerKeepNum(7, date, userIds)
+
+	keepNum14 := getServerKeepNum(14, date, userIds)
+
+	keepNum20 := getServerKeepNum(20, date, userIds)
+
+	keepNum30 := getServerKeepNum(30, date, userIds)
+
+	keepNum60 := getServerKeepNum(60, date, userIds)
+
+	keepNum90 := getServerKeepNum(90, date, userIds)
+
+	chargeRoleKeepData.Date = date.Format("2006-01-02")
+	chargeRoleKeepData.DateTime = date.Unix()
+	chargeRoleKeepData.GameId = serverData.GameId
+	chargeRoleKeepData.ServerId = serverData.ServerId
+	chargeRoleKeepData.ChargeNum = chargeNum
+	chargeRoleKeepData.KeepNum1 = keepNum1
+	chargeRoleKeepData.KeepNum3 = keepNum3
+	chargeRoleKeepData.KeepNum7 = keepNum7
+	chargeRoleKeepData.KeepNum14 = keepNum14
+	chargeRoleKeepData.KeepNum20 = keepNum20
+	chargeRoleKeepData.KeepNum30 = keepNum30
+	chargeRoleKeepData.KeepNum60 = keepNum60
+	chargeRoleKeepData.KeepNum90 = keepNum90
+
+	return
+}
+
+func isExistChargeRoleKeepData(chargeRoleKeepData ChargeRoleKeepData) (id int64) {
+	querySql := fmt.Sprintf(`SELECT id FROM gc_charge_role_keep WHERE date_time = %d AND game_id = %d AND server_id = %d LIMIT 1`,
+		chargeRoleKeepData.DateTime,
+		chargeRoleKeepData.GameId,
+		chargeRoleKeepData.ServerId,
+	)
+
+	row := DB.QueryRow(querySql)
+	row.Scan(&id)
+
+	return
+}
+
+func saveChargeRoleKeepData(chargeRoleKeepData ChargeRoleKeepData) {
+	var err error
+	var querySql string
+
+	if chargeRoleKeepData.Id > 0 {
+		querySql = `UPDATE gc_charge_role_keep SET 
+		charge_num=?,keep_num_1=?,keep_num_3=?,keep_num_7=?,keep_num_14=?,keep_num_30=?,keep_num_60=?,keep_num_90=? 
+		WHERE id=?`
+		_, err = DB.Exec(
+			querySql,
+			chargeRoleKeepData.ChargeNum,
+			chargeRoleKeepData.KeepNum1,
+			chargeRoleKeepData.KeepNum3,
+			chargeRoleKeepData.KeepNum7,
+			chargeRoleKeepData.KeepNum14,
+			chargeRoleKeepData.KeepNum30,
+			chargeRoleKeepData.KeepNum60,
+			chargeRoleKeepData.KeepNum90,
+			chargeRoleKeepData.Id,
+		)
+	} else {
+		querySql = `insert INTO gc_charge_role_keep
+		(date,date_time,game_id,server_id,charge_num,keep_num_1,keep_num_3,keep_num_7,keep_num_14,keep_num_20,keep_num_30,keep_num_60,keep_num_90)
+		values(?,?,?,?,?,?,?,?,?,?,?,?,?)`
+		_, err = DB.Exec(
+			querySql,
+			chargeRoleKeepData.Date,
+			chargeRoleKeepData.DateTime,
+			chargeRoleKeepData.GameId,
+			chargeRoleKeepData.ServerId,
+			chargeRoleKeepData.ChargeNum,
+			chargeRoleKeepData.KeepNum1,
+			chargeRoleKeepData.KeepNum3,
+			chargeRoleKeepData.KeepNum7,
+			chargeRoleKeepData.KeepNum14,
+			chargeRoleKeepData.KeepNum20,
+			chargeRoleKeepData.KeepNum30,
+			chargeRoleKeepData.KeepNum60,
+			chargeRoleKeepData.KeepNum90,
+		)
+	}
+
+	if err != nil {
+		totalErrorCount++
+		fmt.Println(fmt.Sprintf("Data:%v Error:%v Sql:%s", chargeRoleKeepData, err, querySql))
+	} else {
+		totalSuccessCount++
+	}
+
+	totalCount++
+}
+
 func getEffectiveRoleKeepData(serverData ServerData, userIds []string, date time.Time) (effectiveRoleKeepData EffectiveRoleKeepData) {
 	effectiveNum := len(userIds)
 
@@ -257,6 +389,8 @@ func getEffectiveRoleKeepData(serverData ServerData, userIds []string, date time
 	keepNum7 := getServerKeepNum(7, date, userIds)
 
 	keepNum14 := getServerKeepNum(14, date, userIds)
+
+	keepNum20 := getServerKeepNum(20, date, userIds)
 
 	keepNum30 := getServerKeepNum(30, date, userIds)
 
@@ -273,6 +407,7 @@ func getEffectiveRoleKeepData(serverData ServerData, userIds []string, date time
 	effectiveRoleKeepData.KeepNum3 = keepNum3
 	effectiveRoleKeepData.KeepNum7 = keepNum7
 	effectiveRoleKeepData.KeepNum14 = keepNum14
+	effectiveRoleKeepData.KeepNum20 = keepNum20
 	effectiveRoleKeepData.KeepNum30 = keepNum30
 	effectiveRoleKeepData.KeepNum60 = keepNum60
 	effectiveRoleKeepData.KeepNum90 = keepNum90
@@ -355,6 +490,8 @@ func getCreateRoleKeepData(serverData ServerData, userIds []string, date time.Ti
 
 	keepNum14 := getServerKeepNum(14, date, userIds)
 
+	keepNum20 := getServerKeepNum(20, date, userIds)
+
 	keepNum30 := getServerKeepNum(30, date, userIds)
 
 	keepNum60 := getServerKeepNum(60, date, userIds)
@@ -370,6 +507,7 @@ func getCreateRoleKeepData(serverData ServerData, userIds []string, date time.Ti
 	createRoleKeepData.KeepNum3 = keepNum3
 	createRoleKeepData.KeepNum7 = keepNum7
 	createRoleKeepData.KeepNum14 = keepNum14
+	createRoleKeepData.KeepNum20 = keepNum20
 	createRoleKeepData.KeepNum30 = keepNum30
 	createRoleKeepData.KeepNum60 = keepNum60
 	createRoleKeepData.KeepNum90 = keepNum90
@@ -457,6 +595,15 @@ func getServerKeepNum(day int, date time.Time, userIds []string) (keepNum int) {
 		endTime,
 	)
 
+	if typeCharge == "on" {
+		querySql = fmt.Sprintf(
+			`SELECT count(distinct user_id) keep_num FROM gc_order WHERE (user_id in ( %s )) AND (create_time BETWEEN %d AND %d) AND channel = 1 AND status = 1`,
+			strings.Join(userIds, ","),
+			startTime,
+			endTime,
+		)
+	}
+
 	row := DB.QueryRow(querySql)
 	row.Scan(&keepNum)
 
@@ -475,6 +622,13 @@ func getUserIds(serverDetailDatas []ServerDetailData) (userIds []string) {
 func getServerDetailDatas(serverData ServerData, startTime int64, endTime int64) (serverDetailDatas []ServerDetailData) {
 
 	var querySql string
+	querySql = fmt.Sprintf(
+		`SELECT distinct u.user_id 
+		FROM gc_user_role as ur LEFT JOIN gc_user as u on ur.username = u.username 
+		WHERE ur.game_id = %d AND ur.server_id = %d AND (ur.add_time BETWEEN %d AND %d) AND (u.reg_time BETWEEN %d AND %d)`,
+		serverData.GameId, serverData.ServerId, startTime, endTime, startTime, endTime,
+	)
+
 	if typeEffective == "on" {
 		querySql = fmt.Sprintf(
 			`SELECT distinct u.user_id 
@@ -482,16 +636,25 @@ func getServerDetailDatas(serverData ServerData, startTime int64, endTime int64)
 			WHERE ur.game_id = %d AND ur.server_id = %d AND (ur.dabiao_time BETWEEN %d AND %d) AND (u.reg_time BETWEEN %d AND %d) AND ur.is_effective = 1`,
 			serverData.GameId, serverData.ServerId, startTime, endTime, startTime, endTime,
 		)
-	} else {
+	}
+
+	if typeCharge == "on" {
 		querySql = fmt.Sprintf(
-			`SELECT distinct u.user_id 
-			FROM gc_user_role as ur LEFT JOIN gc_user as u on ur.username = u.username 
-			WHERE ur.game_id = %d AND ur.server_id = %d AND (ur.add_time BETWEEN %d AND %d) AND (u.reg_time BETWEEN %d AND %d)`,
+			`SELECT distinct o.user_id 
+			FROM gc_order as o LEFT JOIN gc_user as u on o.user_id = u.user_id 
+			WHERE o.game_id = %d AND o.game_server_id = %d AND (u.reg_time BETWEEN %d AND %d) AND (o.create_time BETWEEN %d AND %d) AND o.channel = 1 AND o.status = 1`,
 			serverData.GameId, serverData.ServerId, startTime, endTime, startTime, endTime,
 		)
 	}
 
-	rows, err := DB2.Query(querySql)
+	//fmt.Println(querySql)
+	var rows *sql.Rows
+	var err error
+	if typeCharge == "on" {
+		rows, err = DB.Query(querySql)
+	} else {
+		rows, err = DB2.Query(querySql)
+	}
 
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Get server data detail error, Error:%s", err))
