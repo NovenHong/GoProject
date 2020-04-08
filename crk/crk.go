@@ -595,14 +595,14 @@ func getServerKeepNum(day int, date time.Time, userIds []string) (keepNum int) {
 		endTime,
 	)
 
-	if typeCharge == "on" {
-		querySql = fmt.Sprintf(
-			`SELECT count(distinct user_id) keep_num FROM gc_order WHERE (user_id in ( %s )) AND (create_time BETWEEN %d AND %d) AND channel = 1 AND status = 1`,
-			strings.Join(userIds, ","),
-			startTime,
-			endTime,
-		)
-	}
+	// if typeCharge == "on" {
+	// 	querySql = fmt.Sprintf(
+	// 		`SELECT count(distinct user_id) keep_num FROM gc_order WHERE (user_id in ( %s )) AND (create_time BETWEEN %d AND %d) AND channel = 1 AND status = 1`,
+	// 		strings.Join(userIds, ","),
+	// 		startTime,
+	// 		endTime,
+	// 	)
+	// }
 
 	row := DB.QueryRow(querySql)
 	row.Scan(&keepNum)
