@@ -52,7 +52,8 @@ type ServerData struct {
 }
 
 type ServerDetailData struct {
-	UserId string `db:"user_id"`
+	UserId          string `db:"user_id"`
+	FirstChargeTime int64  `db:"first_charge_time"`
 }
 
 type CreateRoleKeepData struct {
@@ -177,6 +178,9 @@ func main() {
 			serverDetailDatas := getServerDetailDatas(serverData, startTime, endTime)
 
 			userIds := getUserIds(serverDetailDatas)
+
+			//fmt.Println(userIds)
+			//os.Exit(0)
 
 			if len(userIds) == 0 {
 				continue
@@ -640,10 +644,9 @@ func getServerDetailDatas(serverData ServerData, startTime int64, endTime int64)
 
 	if typeCharge == "on" {
 		querySql = fmt.Sprintf(
-			`SELECT distinct o.user_id 
-			FROM gc_order as o LEFT JOIN gc_user as u on o.user_id = u.user_id 
-			WHERE o.game_id = %d AND o.game_server_id = %d AND (u.reg_time BETWEEN %d AND %d) AND (o.create_time BETWEEN %d AND %d) AND o.channel = 1 AND o.status = 1`,
-			serverData.GameId, serverData.ServerId, startTime, endTime, startTime, endTime,
+			`SELECT user_id,MIN(create_time) first_charge_time FROM gc_order 
+			WHERE game_id = %d AND game_server_id = %d AND channel = 1 AND status = 1 GROUP BY user_id HAVING first_charge_time BETWEEN %d AND %d`,
+			serverData.GameId, serverData.ServerId, startTime, endTime,
 		)
 	}
 
@@ -663,7 +666,7 @@ func getServerDetailDatas(serverData ServerData, startTime int64, endTime int64)
 	serverDetailData := new(ServerDetailData)
 
 	for rows.Next() {
-		rows.Scan(&serverDetailData.UserId)
+		rows.Scan(&serverDetailData.UserId, &serverDetailData.FirstChargeTime)
 		serverDetailDatas = append(serverDetailDatas, *serverDetailData)
 	}
 
