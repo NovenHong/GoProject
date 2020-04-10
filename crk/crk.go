@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/garyburd/redigo/redis"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -33,6 +35,7 @@ var (
 
 var DB *sql.DB
 var DB2 *sql.DB
+var RC redis.Conn
 var err error
 var maxConnections int
 var waitDBNotBusyCount int
@@ -125,6 +128,12 @@ func init() {
 	flag.StringVar(&myDate, "my-date", "", "汇总日期")
 	flag.Int64Var(&serverId, "server-id", 0, "区服id")
 	flag.Parse()
+
+	RC, err = redis.Dial("tcp", "127.0.0.1:6379")
+	if err != nil {
+		fmt.Println("Connect to redis error", err)
+		return
+	}
 }
 
 func main() {
@@ -136,7 +145,7 @@ func main() {
 
 	fmt.Println(fmt.Sprintf("Task begin StartDate:%s EndDate:%s RunDate:%s", date.AddDate(0, 0, -92).Format("2006-01-02"), date.Format("2006-01-02"), time.Now().Format("2006-01-02 15:04:05")))
 
-	taskStartTime := time.Now().Unix()
+	totalStartTime := time.Now().Unix()
 
 	serverDatas := getServerDatas()
 
@@ -175,11 +184,25 @@ func main() {
 				continue
 			}
 
-			serverDetailDatas := getServerDetailDatas(serverData, startTime, endTime)
+			var userIds []string
 
-			userIds := getUserIds(serverDetailDatas)
+			if typeCharge == "on" {
+				key := fmt.Sprintf("cj655_crk_charge_%s", fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%d%d", serverData, startTime, startTime)))))
+				keyExist, _ := redis.Bool(RC.Do("EXISTS", key))
+				if keyExist {
+					r, _ := redis.String(RC.Do("GET", key))
+					userIds = strings.Split(r, ",")
+				} else {
+					serverDetailDatas := getServerDetailDatas(serverData, startTime, endTime)
+					userIds = getUserIds(serverDetailDatas)
+					RC.Do("SET", key, strings.Join(userIds, ","))
+				}
+			} else {
+				serverDetailDatas := getServerDetailDatas(serverData, startTime, endTime)
+				userIds = getUserIds(serverDetailDatas)
+			}
 
-			//fmt.Println(userIds)
+			//fmt.Println(startTime)
 			//os.Exit(0)
 
 			if len(userIds) == 0 {
@@ -224,12 +247,14 @@ func main() {
 
 		}
 
+		taskEndTime := time.Now().Unix()
+		fmt.Println(fmt.Sprintf("Task %s is compeleted,ElapsedTime:%s", theTime.Format("2006-01-02"), resolveSecond(taskEndTime-totalStartTime)))
 	}
 
-	taskEndTime := time.Now().Unix()
+	totalEndTime := time.Now().Unix()
 
 	fmt.Println(fmt.Sprintf("All task is compeleted,SuccessRow:%d ErrorRow:%d TotalRow:%d Time:%s",
-		totalSuccessCount, totalErrorCount, totalCount, resolveSecond(taskEndTime-taskStartTime)))
+		totalSuccessCount, totalErrorCount, totalCount, resolveSecond(totalEndTime-totalStartTime)))
 
 }
 
