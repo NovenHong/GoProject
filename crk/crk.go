@@ -187,22 +187,26 @@ func main() {
 			var userIds []string
 
 			if typeCharge == "on" {
-				key := fmt.Sprintf("cj655_crk_charge_%s", fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%d%d", serverData, startTime, startTime)))))
-				keyExist, _ := redis.Bool(RC.Do("EXISTS", key))
+				key := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%d%d", serverData, startTime, startTime))))
+				keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk_charge_user_map", key))
 				if keyExist {
-					r, _ := redis.String(RC.Do("GET", key))
-					userIds = strings.Split(r, ",")
+					r, _ := redis.String(RC.Do("HGET", "cj655_crk_charge_user_map", key))
+					if r != "" {
+						userIds = strings.Split(r, ",")
+					}
 				} else {
 					serverDetailDatas := getServerDetailDatas(serverData, startTime, endTime)
 					userIds = getUserIds(serverDetailDatas)
-					RC.Do("SET", key, strings.Join(userIds, ","))
+					//RC.Do("SET", key, strings.Join(userIds, ","))
+					RC.Do("HSET", "cj655_crk_charge_user_map", key, strings.Join(userIds, ","))
 				}
 			} else {
 				serverDetailDatas := getServerDetailDatas(serverData, startTime, endTime)
 				userIds = getUserIds(serverDetailDatas)
 			}
 
-			//fmt.Println(startTime)
+			//fmt.Println(userIds)
+			//fmt.Println(len(userIds))
 			//os.Exit(0)
 
 			if len(userIds) == 0 {
