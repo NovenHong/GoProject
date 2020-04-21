@@ -694,9 +694,16 @@ func getServerDetailDatas(serverData ServerData, startTime int64, endTime int64)
 
 	serverDetailData := new(ServerDetailData)
 
-	for rows.Next() {
-		rows.Scan(&serverDetailData.UserId, &serverDetailData.FirstChargeTime)
-		serverDetailDatas = append(serverDetailDatas, *serverDetailData)
+	if typeCharge == "on" {
+		for rows.Next() {
+			rows.Scan(&serverDetailData.UserId, &serverDetailData.FirstChargeTime)
+			serverDetailDatas = append(serverDetailDatas, *serverDetailData)
+		}
+	} else {
+		for rows.Next() {
+			rows.Scan(&serverDetailData.UserId)
+			serverDetailDatas = append(serverDetailDatas, *serverDetailData)
+		}
 	}
 
 	defer func() {
