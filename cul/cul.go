@@ -169,7 +169,7 @@ func init() {
 			lastMonth = 12
 			curYear = curYear - 1
 		}
-		months = append(months, fmt.Sprintf("%d-%d", curYear, lastMonth))
+		months = append(months, fmt.Sprintf("%d-%02d", curYear, lastMonth))
 	}
 
 	initFlag()
