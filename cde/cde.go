@@ -416,7 +416,7 @@ func getChannelIds() (channelIds []ChannelId) {
 
 	field := "channel_id"
 
-	myUrl := "https://www.cj655.com/api.php?m=channelpublic&a=channel_data&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z"
+	myUrl := "https://admin.cj655.com/api.php?m=channelpublic&a=channel_data&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z"
 
 	resp, err := http.PostForm(myUrl, url.Values{"where": {where3}, "field": {field}})
 

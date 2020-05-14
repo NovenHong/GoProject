@@ -606,10 +606,10 @@ func getChannelIds() (channelIds []ChannelId) {
 
 	field := "channel_id"
 
-	myUrl := "https://www.cj655.com/api.php?m=channelpublic&a=channel_data&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z"
+	myUrl := "https://admin.cj655.com/api.php?m=channelpublic&a=channel_data&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z"
 
 	if limit > 0 {
-		myUrl = fmt.Sprintf("https://www.cj655.com/api.php?m=channelpublic&a=channel_data&limit=%d&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z", limit)
+		myUrl = fmt.Sprintf("https://admin.cj655.com/api.php?m=channelpublic&a=channel_data&limit=%d&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z", limit)
 	}
 
 	resp, err := http.PostForm(myUrl, url.Values{"where": {where3}, "field": {field}})

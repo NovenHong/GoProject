@@ -570,10 +570,10 @@ func getChannelIds() (channelDatas []ChannelData) {
 
 	field := "channel_id"
 
-	url := fmt.Sprintf("https://www.cj655.com/api.php?m=channelpublic&a=channel_data&where=%s&field=%s&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z", where3, field)
+	url := fmt.Sprintf("https://admin.cj655.com/api.php?m=channelpublic&a=channel_data&where=%s&field=%s&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z", where3, field)
 
 	if limit > 0 {
-		url = fmt.Sprintf("https://www.cj655.com/api.php?m=channelpublic&a=channel_data&where=%s&field=%s&limit=%d&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z", where3, field, limit)
+		url = fmt.Sprintf("https://admin.cj655.com/api.php?m=channelpublic&a=channel_data&where=%s&field=%s&limit=%d&api_key=TbjoLfLhnikp92hyd8dx0ozCcEipII2Z", where3, field, limit)
 	}
 
 	//fmt.Println(url)
