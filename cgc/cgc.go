@@ -37,7 +37,6 @@ type PresidentChannelData struct {
 	GameSettleMoney int     //游戏投放成本
 	RegNum          int     //游戏注册数
 	RegUsers        []int64 //游戏注册用户
-	GameChargeSum   float64
 }
 
 type ChannelGameCountData struct {
@@ -50,7 +49,6 @@ type ChannelGameCountData struct {
 	RegNum          int
 	EffectiveNum    int
 	SettleMoney     int
-	ChargeSum       float64
 }
 
 type ChannelGameCountUserData struct {
@@ -247,13 +245,13 @@ func saveChannelGameCountData(channelGameCountData ChannelGameCountData) {
 	var querySql string
 
 	if id := isExistChannelGameCountData(channelGameCountData); id > 0 {
-		querySql = `UPDATE gc_channel_game_count SET open_server_count = ?,reg_num = ?,effective_num = ?,settle_money = ?,charge_sum = ? WHERE id = ?`
+		querySql = `UPDATE gc_channel_game_count SET open_server_count = ?,reg_num = ?,effective_num = ?,settle_money = ? WHERE id = ?`
 		_, err = DB.Exec(querySql, channelGameCountData.OpenServerCount, channelGameCountData.RegNum, channelGameCountData.EffectiveNum,
-			channelGameCountData.SettleMoney, channelGameCountData.ChargeSum, id)
+			channelGameCountData.SettleMoney, id)
 	} else {
-		querySql = `INSERT INTO gc_channel_game_count (date,date_time,game_id,game_name,open_server_count,reg_num,effective_num,settle_money,charge_sum) values(?,?,?,?,?,?,?,?,?)`
+		querySql = `INSERT INTO gc_channel_game_count (date,date_time,game_id,game_name,open_server_count,reg_num,effective_num,settle_money) values(?,?,?,?,?,?,?,?)`
 		_, err = DB.Exec(querySql, channelGameCountData.Date, channelGameCountData.DateTime, channelGameCountData.GameId, channelGameCountData.GameName, channelGameCountData.OpenServerCount,
-			channelGameCountData.RegNum, channelGameCountData.EffectiveNum, channelGameCountData.SettleMoney, channelGameCountData.ChargeSum)
+			channelGameCountData.RegNum, channelGameCountData.EffectiveNum, channelGameCountData.SettleMoney)
 	}
 
 	if err != nil {
@@ -267,7 +265,6 @@ func getChannelGameCountData(presidentChannelDatas []PresidentChannelData, gameD
 		channelGameCountData.SettleMoney += presidentChannelData.GameSettleMoney
 		channelGameCountData.RegNum += presidentChannelData.RegNum
 		channelGameCountData.EffectiveNum += presidentChannelData.EffectiveNum
-		channelGameCountData.ChargeSum += presidentChannelData.GameChargeSum
 	}
 
 	channelGameCountData.Date = date.Format("2006-01")
@@ -355,18 +352,6 @@ func getPresidentChannelDatas(presidentChannelIds []string, month string, gameDa
 	//计算游戏渠道注册数
 	for index, presidentChannelData := range presidentChannelDatas {
 		presidentChannelDatas[index].RegNum = len(presidentChannelData.RegUsers)
-	}
-
-	//计算渠道游戏充值金额
-	for index, presidentChannelData := range presidentChannelDatas {
-		querySql := fmt.Sprintf(`SELECT SUM(uc.coin/100) as charge_sum FROM gc_user AS u LEFT JOIN gc_user_consume AS uc ON u.user_id = uc.user_id
-		WHERE u.reg_time BETWEEN %d AND %d AND u.game_id = %d AND u.main_channel_id = %s AND uc.coin_type = 1 AND uc.status=1`, startTime, endTime, gameData.GameId, presidentChannelData.ChannelId)
-
-		row := DB3.QueryRow(querySql)
-		var chargeSum float64
-		row.Scan(&chargeSum)
-
-		presidentChannelDatas[index].GameChargeSum = chargeSum
 	}
 
 	return
