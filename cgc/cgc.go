@@ -296,6 +296,7 @@ func getPresidentChannelDatas(presidentChannelIds []string, month string, gameDa
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	//fmt.Println(string(body))
+	//os.Exit(0)
 
 	_ = json.Unmarshal(body, &presidentChannelDatas)
 
