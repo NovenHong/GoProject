@@ -183,6 +183,11 @@ func startTask(month string, exclusiveChannelIds []string) {
 
 		channelGameCountData := getChannelGameCountData(presidentChannelDatas, gameData, theTime)
 
+		//汇总渠道数据
+		for _, presidentChannelData := range presidentChannelDatas {
+			saveChannelGameCountData2(presidentChannelData, gameData, theTime)
+		}
+
 		saveChannelGameCountUserDatas(channelGameCountUserDatas)
 
 		saveChannelGameCountData(channelGameCountData)
@@ -193,6 +198,36 @@ func startTask(month string, exclusiveChannelIds []string) {
 	taskEndTime := time.Now().Unix()
 
 	fmt.Println(fmt.Sprintf("Task:%s is compeleted,Time:%s", month, resolveSecond(taskEndTime-taskStartTime)))
+}
+
+func isExistChannelGameCountData2(presidentChannelData PresidentChannelData, gameData GameData, date time.Time) (id int64) {
+	querySql := fmt.Sprintf(
+		`SELECT id FROM gc_channel_game_count2 WHERE date_time = %d AND game_id = %d AND channel_id = %s LIMIT 1`,
+		date.Unix(), gameData.GameId, presidentChannelData.ChannelId,
+	)
+
+	row := DB.QueryRow(querySql)
+	row.Scan(&id)
+
+	return
+}
+
+func saveChannelGameCountData2(presidentChannelData PresidentChannelData, gameData GameData, date time.Time) {
+	var err error
+	var querySql string
+
+	if id := isExistChannelGameCountData2(presidentChannelData, gameData, date); id > 0 {
+		querySql = `UPDATE gc_channel_game_count2 SET open_server_count = ?,reg_num = ?,effective_num = ?,settle_money = ? WHERE id = ?`
+		_, err = DB.Exec(querySql, gameData.OpenServerCount, presidentChannelData.RegNum, presidentChannelData.EffectiveNum, presidentChannelData.GameSettleMoney, id)
+	} else {
+		querySql = `INSERT INTO gc_channel_game_count2 (date,date_time,channel_id,game_id,game_name,open_server_count,reg_num,effective_num,settle_money) values(?,?,?,?,?,?,?,?,?)`
+		_, err = DB.Exec(querySql, date.Format("2006-01"), date.Unix(), presidentChannelData.ChannelId, gameData.GameId, gameData.GameName,
+			gameData.OpenServerCount, presidentChannelData.RegNum, presidentChannelData.EffectiveNum, presidentChannelData.GameSettleMoney)
+	}
+
+	if err != nil {
+		fmt.Println(fmt.Sprintf("Error:%v Sql:%s", err, querySql))
+	}
 }
 
 func isExistChannelGameCountUserData(channelGameCountUserData ChannelGameCountUserData) (id int64) {
