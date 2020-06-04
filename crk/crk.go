@@ -187,7 +187,7 @@ func main() {
 			var userIds []string
 
 			if typeCharge == "on" {
-				key := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%d%d", serverData, startTime, startTime))))
+				key := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%d", serverData, startTime))))
 				keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk_charge_user_map", key))
 				if keyExist {
 					r, _ := redis.String(RC.Do("HGET", "cj655_crk_charge_user_map", key))
@@ -200,9 +200,34 @@ func main() {
 					//RC.Do("SET", key, strings.Join(userIds, ","))
 					RC.Do("HSET", "cj655_crk_charge_user_map", key, strings.Join(userIds, ","))
 				}
+			} else if typeEffective == "on" {
+				key := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%d", serverData, startTime))))
+				keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk_effective_user_map", key))
+				if keyExist {
+					r, _ := redis.String(RC.Do("HGET", "cj655_crk_effective_user_map", key))
+					if r != "" {
+						userIds = strings.Split(r, ",")
+					}
+				} else {
+					serverDetailDatas := getServerDetailDatas(serverData, startTime, endTime)
+					userIds = getUserIds(serverDetailDatas)
+					//RC.Do("SET", key, strings.Join(userIds, ","))
+					RC.Do("HSET", "cj655_crk_effective_user_map", key, strings.Join(userIds, ","))
+				}
 			} else {
-				serverDetailDatas := getServerDetailDatas(serverData, startTime, endTime)
-				userIds = getUserIds(serverDetailDatas)
+				key := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%d", serverData, startTime))))
+				keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk_create_user_map", key))
+				if keyExist {
+					r, _ := redis.String(RC.Do("HGET", "cj655_crk_create_user_map", key))
+					if r != "" {
+						userIds = strings.Split(r, ",")
+					}
+				} else {
+					serverDetailDatas := getServerDetailDatas(serverData, startTime, endTime)
+					userIds = getUserIds(serverDetailDatas)
+					//RC.Do("SET", key, strings.Join(userIds, ","))
+					RC.Do("HSET", "cj655_crk_create_user_map", key, strings.Join(userIds, ","))
+				}
 			}
 
 			//fmt.Println(userIds)
