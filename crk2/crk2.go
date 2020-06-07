@@ -69,6 +69,10 @@ var typeCharge string
 var serverId int64
 var myDate string
 
+type GameData struct {
+	GameId int64 `db:"game_id"`
+}
+
 type ServerData struct {
 	GameId   int64 `db:"game_id"`
 	ServerId int64 `db:"game_server_id"`
@@ -155,7 +159,6 @@ func init() {
 	flag.StringVar(&typeEffective, "type-effective", "off", "有效数模式")
 	flag.StringVar(&typeCharge, "type-charge", "off", "付费数模式")
 	flag.StringVar(&myDate, "my-date", "", "汇总日期")
-	flag.Int64Var(&serverId, "server-id", 0, "区服id")
 	flag.Parse()
 
 	RC, err = redis.Dial("tcp", "127.0.0.1:6379")
@@ -176,7 +179,9 @@ func main() {
 
 	totalStartTime := time.Now().Unix()
 
-	serverDatas := getServerDatas()
+	//serverDatas := getServerDatas()
+
+	gameDatas := getGameDatas()
 
 	channelDatas := getChannelDatas()
 
@@ -209,11 +214,7 @@ func main() {
 			continue
 		}
 
-		for _, serverData := range serverDatas {
-
-			if serverId > 0 && serverData.ServerId != serverId {
-				continue
-			}
+		for _, gameData := range gameDatas {
 
 			for _, channelData := range channelDatas {
 
@@ -223,7 +224,7 @@ func main() {
 
 				var userIds []string
 
-				key := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%v%d", serverData, channelData, startTime))))
+				key := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%v%d", gameData, channelData, startTime))))
 
 				if typeCharge == "on" {
 					keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk_charge_user_map", key))
@@ -233,7 +234,7 @@ func main() {
 							userIds = strings.Split(r, ",")
 						}
 					} else {
-						serverDetailDatas := getServerDetailDatas(serverData, channelData, startTime, endTime)
+						serverDetailDatas := getServerDetailDatas(gameData, channelData, startTime, endTime)
 						userIds = getUserIds(serverDetailDatas)
 						//RC.Do("SET", key, strings.Join(userIds, ","))
 						RC.Do("HSET", "cj655_crk_charge_user_map", key, strings.Join(userIds, ","))
@@ -246,7 +247,7 @@ func main() {
 							userIds = strings.Split(r, ",")
 						}
 					} else {
-						serverDetailDatas := getServerDetailDatas(serverData, channelData, startTime, endTime)
+						serverDetailDatas := getServerDetailDatas(gameData, channelData, startTime, endTime)
 						userIds = getUserIds(serverDetailDatas)
 						//RC.Do("SET", key, strings.Join(userIds, ","))
 						RC.Do("HSET", "cj655_crk_effective_user_map", key, strings.Join(userIds, ","))
@@ -259,7 +260,7 @@ func main() {
 							userIds = strings.Split(r, ",")
 						}
 					} else {
-						serverDetailDatas := getServerDetailDatas(serverData, channelData, startTime, endTime)
+						serverDetailDatas := getServerDetailDatas(gameData, channelData, startTime, endTime)
 						userIds = getUserIds(serverDetailDatas)
 						//RC.Do("SET", key, strings.Join(userIds, ","))
 						RC.Do("HSET", "cj655_crk_create_user_map", key, strings.Join(userIds, ","))
@@ -277,7 +278,7 @@ func main() {
 				//fmt.Println(userIds)
 
 				if typeEffective == "on" {
-					effectiveRoleKeepData := getEffectiveRoleKeepData(serverData, channelData, userIds, theTime)
+					effectiveRoleKeepData := getEffectiveRoleKeepData(gameData, channelData, userIds, theTime)
 
 					if id := isExistEffectiveRoleKeepData(effectiveRoleKeepData); id > 0 {
 						effectiveRoleKeepData.Id = id
@@ -288,7 +289,7 @@ func main() {
 					saveEffectiveRoleKeepData(effectiveRoleKeepData)
 
 				} else if typeCharge == "on" {
-					chargeRoleKeepData := getChargeRoleKeepData(serverData, channelData, userIds, theTime)
+					chargeRoleKeepData := getChargeRoleKeepData(gameData, channelData, userIds, theTime)
 
 					// fmt.Println(chargeRoleKeepData)
 					// os.Exit(0)
@@ -299,7 +300,7 @@ func main() {
 
 					saveChargeRoleKeepData(chargeRoleKeepData)
 				} else {
-					createRoleKeepData := getCreateRoleKeepData(serverData, channelData, userIds, theTime)
+					createRoleKeepData := getCreateRoleKeepData(gameData, channelData, userIds, theTime)
 
 					if id := isExistCreateRoleKeepData(createRoleKeepData); id > 0 {
 						createRoleKeepData.Id = id
@@ -312,7 +313,6 @@ func main() {
 			}
 
 			//break
-
 		}
 
 		taskEndTime := time.Now().Unix()
@@ -405,7 +405,7 @@ func getCurrentDBConnections() (processlistCount int) {
 	return
 }
 
-func getChargeRoleKeepData(serverData ServerData, channelData ChannelData, userIds []string, date time.Time) (chargeRoleKeepData ChargeRoleKeepData) {
+func getChargeRoleKeepData(gameData GameData, channelData ChannelData, userIds []string, date time.Time) (chargeRoleKeepData ChargeRoleKeepData) {
 	chargeNum := len(userIds)
 
 	keepNum1 := getServerKeepNum(1, date, userIds)
@@ -427,8 +427,8 @@ func getChargeRoleKeepData(serverData ServerData, channelData ChannelData, userI
 	chargeRoleKeepData.Date = date.Format("2006-01-02")
 	chargeRoleKeepData.DateTime = date.Unix()
 	chargeRoleKeepData.ChannelId = channelData.ChannelId
-	chargeRoleKeepData.GameId = serverData.GameId
-	chargeRoleKeepData.ServerId = serverData.ServerId
+	chargeRoleKeepData.GameId = gameData.GameId
+	//chargeRoleKeepData.ServerId = serverData.ServerId
 	chargeRoleKeepData.ChargeNum = chargeNum
 	chargeRoleKeepData.KeepNum1 = keepNum1
 	chargeRoleKeepData.KeepNum3 = keepNum3
@@ -509,7 +509,7 @@ func saveChargeRoleKeepData(chargeRoleKeepData ChargeRoleKeepData) {
 	totalCount++
 }
 
-func getEffectiveRoleKeepData(serverData ServerData, channelData ChannelData, userIds []string, date time.Time) (effectiveRoleKeepData EffectiveRoleKeepData) {
+func getEffectiveRoleKeepData(gameData GameData, channelData ChannelData, userIds []string, date time.Time) (effectiveRoleKeepData EffectiveRoleKeepData) {
 	effectiveNum := len(userIds)
 
 	keepNum1 := getServerKeepNum(1, date, userIds)
@@ -531,8 +531,8 @@ func getEffectiveRoleKeepData(serverData ServerData, channelData ChannelData, us
 	effectiveRoleKeepData.Date = date.Format("2006-01-02")
 	effectiveRoleKeepData.DateTime = date.Unix()
 	effectiveRoleKeepData.ChannelId = channelData.ChannelId
-	effectiveRoleKeepData.GameId = serverData.GameId
-	effectiveRoleKeepData.ServerId = serverData.ServerId
+	effectiveRoleKeepData.GameId = gameData.GameId
+	//effectiveRoleKeepData.ServerId = serverData.ServerId
 	effectiveRoleKeepData.EffectiveNum = effectiveNum
 	effectiveRoleKeepData.KeepNum1 = keepNum1
 	effectiveRoleKeepData.KeepNum3 = keepNum3
@@ -612,7 +612,7 @@ func saveEffectiveRoleKeepData(effectiveRoleKeepData EffectiveRoleKeepData) {
 	totalCount++
 }
 
-func getCreateRoleKeepData(serverData ServerData, channelData ChannelData, userIds []string, date time.Time) (createRoleKeepData CreateRoleKeepData) {
+func getCreateRoleKeepData(gameData GameData, channelData ChannelData, userIds []string, date time.Time) (createRoleKeepData CreateRoleKeepData) {
 	createNum := len(userIds)
 
 	keepNum1 := getServerKeepNum(1, date, userIds)
@@ -634,8 +634,8 @@ func getCreateRoleKeepData(serverData ServerData, channelData ChannelData, userI
 	createRoleKeepData.Date = date.Format("2006-01-02")
 	createRoleKeepData.DateTime = date.Unix()
 	createRoleKeepData.ChannelId = channelData.ChannelId
-	createRoleKeepData.GameId = serverData.GameId
-	createRoleKeepData.ServerId = serverData.ServerId
+	createRoleKeepData.GameId = gameData.GameId
+	//createRoleKeepData.ServerId = serverData.ServerId
 	createRoleKeepData.CreateNum = createNum
 	createRoleKeepData.KeepNum1 = keepNum1
 	createRoleKeepData.KeepNum3 = keepNum3
@@ -755,30 +755,30 @@ func getUserIds(serverDetailDatas []ServerDetailData) (userIds []string) {
 	return
 }
 
-func getServerDetailDatas(serverData ServerData, channelData ChannelData, startTime int64, endTime int64) (serverDetailDatas []ServerDetailData) {
+func getServerDetailDatas(gameData GameData, channelData ChannelData, startTime int64, endTime int64) (serverDetailDatas []ServerDetailData) {
 
 	var querySql string
 	querySql = fmt.Sprintf(
 		`SELECT distinct u.user_id 
 		FROM gc_user_role as ur LEFT JOIN gc_user as u on ur.username = u.username 
-		WHERE ur.game_id = %d AND ur.server_id = %d AND (ur.add_time BETWEEN %d AND %d) AND (u.reg_time BETWEEN %d AND %d) AND u.main_channel_id = %d`,
-		serverData.GameId, serverData.ServerId, startTime, endTime, startTime, endTime, channelData.ChannelId,
+		WHERE ur.game_id = %d AND (ur.add_time BETWEEN %d AND %d) AND (u.reg_time BETWEEN %d AND %d) AND u.main_channel_id = %d`,
+		gameData.GameId, startTime, endTime, startTime, endTime, channelData.ChannelId,
 	)
 
 	if typeEffective == "on" {
 		querySql = fmt.Sprintf(
 			`SELECT distinct u.user_id 
 			FROM gc_user_role as ur LEFT JOIN gc_user as u on ur.username = u.username 
-			WHERE ur.game_id = %d AND ur.server_id = %d AND (ur.dabiao_time BETWEEN %d AND %d) AND (u.reg_time BETWEEN %d AND %d) AND ur.is_effective = 1`,
-			serverData.GameId, serverData.ServerId, startTime, endTime, startTime, endTime,
+			WHERE ur.game_id = %d AND (ur.dabiao_time BETWEEN %d AND %d) AND (u.reg_time BETWEEN %d AND %d) AND ur.is_effective = 1`,
+			gameData.GameId, startTime, endTime, startTime, endTime,
 		)
 	}
 
 	if typeCharge == "on" {
 		querySql = fmt.Sprintf(
 			`SELECT user_id,MIN(create_time) first_charge_time FROM gc_order 
-			WHERE game_id = %d AND game_server_id = %d AND channel = 1 AND status = 1 GROUP BY user_id HAVING first_charge_time BETWEEN %d AND %d`,
-			serverData.GameId, serverData.ServerId, startTime, endTime,
+			WHERE game_id = %d AND channel = 1 AND status = 1 GROUP BY user_id HAVING first_charge_time BETWEEN %d AND %d`,
+			gameData.GameId, startTime, endTime,
 		)
 	}
 
@@ -831,6 +831,25 @@ func getChannelDatas() (channelDatas []ChannelData) {
 	for rows.Next() {
 		rows.Scan(&channelData.ChannelId)
 		channelDatas = append(channelDatas, *channelData)
+	}
+
+	defer func() {
+		rows.Close()
+	}()
+
+	return
+}
+
+func getGameDatas() (gameDatas []GameData) {
+	querySql := "SELECT game_id FROM gc_game WHERE status = 1"
+
+	rows, _ := DB4.Query(querySql)
+
+	gameData := new(GameData)
+
+	for rows.Next() {
+		rows.Scan(&gameData.GameId)
+		gameDatas = append(gameDatas, *gameData)
 	}
 
 	defer func() {
