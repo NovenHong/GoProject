@@ -227,9 +227,9 @@ func main() {
 				key := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%v%d", gameData, channelData, startTime))))
 
 				if typeCharge == "on" {
-					keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk_charge_user_map", key))
+					keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk2_charge_user_map", key))
 					if keyExist {
-						r, _ := redis.String(RC.Do("HGET", "cj655_crk_charge_user_map", key))
+						r, _ := redis.String(RC.Do("HGET", "cj655_crk2_charge_user_map", key))
 						if r != "" {
 							userIds = strings.Split(r, ",")
 						}
@@ -237,12 +237,12 @@ func main() {
 						serverDetailDatas := getServerDetailDatas(gameData, channelData, startTime, endTime)
 						userIds = getUserIds(serverDetailDatas)
 						//RC.Do("SET", key, strings.Join(userIds, ","))
-						RC.Do("HSET", "cj655_crk_charge_user_map", key, strings.Join(userIds, ","))
+						RC.Do("HSET", "cj655_crk2_charge_user_map", key, strings.Join(userIds, ","))
 					}
 				} else if typeEffective == "on" {
-					keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk_effective_user_map", key))
+					keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk2_effective_user_map", key))
 					if keyExist {
-						r, _ := redis.String(RC.Do("HGET", "cj655_crk_effective_user_map", key))
+						r, _ := redis.String(RC.Do("HGET", "cj655_crk2_effective_user_map", key))
 						if r != "" {
 							userIds = strings.Split(r, ",")
 						}
@@ -250,12 +250,12 @@ func main() {
 						serverDetailDatas := getServerDetailDatas(gameData, channelData, startTime, endTime)
 						userIds = getUserIds(serverDetailDatas)
 						//RC.Do("SET", key, strings.Join(userIds, ","))
-						RC.Do("HSET", "cj655_crk_effective_user_map", key, strings.Join(userIds, ","))
+						RC.Do("HSET", "cj655_crk2_effective_user_map", key, strings.Join(userIds, ","))
 					}
 				} else {
-					keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk_create_user_map", key))
+					keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk2_create_user_map", key))
 					if keyExist {
-						r, _ := redis.String(RC.Do("HGET", "cj655_crk_create_user_map", key))
+						r, _ := redis.String(RC.Do("HGET", "cj655_crk2_create_user_map", key))
 						if r != "" {
 							userIds = strings.Split(r, ",")
 						}
@@ -263,7 +263,7 @@ func main() {
 						serverDetailDatas := getServerDetailDatas(gameData, channelData, startTime, endTime)
 						userIds = getUserIds(serverDetailDatas)
 						//RC.Do("SET", key, strings.Join(userIds, ","))
-						RC.Do("HSET", "cj655_crk_create_user_map", key, strings.Join(userIds, ","))
+						RC.Do("HSET", "cj655_crk2_create_user_map", key, strings.Join(userIds, ","))
 					}
 				}
 
@@ -769,16 +769,16 @@ func getServerDetailDatas(gameData GameData, channelData ChannelData, startTime 
 		querySql = fmt.Sprintf(
 			`SELECT distinct u.user_id 
 			FROM gc_user_role as ur LEFT JOIN gc_user as u on ur.username = u.username 
-			WHERE ur.game_id = %d AND (ur.dabiao_time BETWEEN %d AND %d) AND (u.reg_time BETWEEN %d AND %d) AND ur.is_effective = 1`,
-			gameData.GameId, startTime, endTime, startTime, endTime,
+			WHERE ur.game_id = %d AND (ur.dabiao_time BETWEEN %d AND %d) AND (u.reg_time BETWEEN %d AND %d) AND ur.is_effective = 1 AND u.main_channel_id = %d`,
+			gameData.GameId, startTime, endTime, startTime, endTime, channelData.ChannelId,
 		)
 	}
 
 	if typeCharge == "on" {
 		querySql = fmt.Sprintf(
-			`SELECT user_id,MIN(create_time) first_charge_time FROM gc_order 
-			WHERE game_id = %d AND channel = 1 AND status = 1 GROUP BY user_id HAVING first_charge_time BETWEEN %d AND %d`,
-			gameData.GameId, startTime, endTime,
+			`SELECT user_id,MIN(create_time) first_charge_time FROM gc_user_consume 
+			WHERE game_id = %d AND coin_type = 1 AND status = 1 AND main_channel_id = %d GROUP BY user_id HAVING first_charge_time BETWEEN %d AND %d`,
+			gameData.GameId, channelData.ChannelId, startTime, endTime,
 		)
 	}
 
