@@ -391,7 +391,7 @@ func saveChargeRoleKeepData(chargeRoleKeepData ChargeRoleKeepData) {
 
 	if chargeRoleKeepData.Id > 0 {
 		querySql = `UPDATE gc_charge_role_keep SET 
-		charge_num=?,keep_num_1=?,keep_num_3=?,keep_num_7=?,keep_num_14=?,keep_num_30=?,keep_num_60=?,keep_num_90=? 
+		charge_num=?,keep_num_1=?,keep_num_3=?,keep_num_7=?,keep_num_14=?,keep_num_20=?,keep_num_30=?,keep_num_60=?,keep_num_90=? 
 		WHERE id=?`
 		_, err = DB.Exec(
 			querySql,
@@ -400,6 +400,7 @@ func saveChargeRoleKeepData(chargeRoleKeepData ChargeRoleKeepData) {
 			chargeRoleKeepData.KeepNum3,
 			chargeRoleKeepData.KeepNum7,
 			chargeRoleKeepData.KeepNum14,
+			chargeRoleKeepData.KeepNum20,
 			chargeRoleKeepData.KeepNum30,
 			chargeRoleKeepData.KeepNum60,
 			chargeRoleKeepData.KeepNum90,
