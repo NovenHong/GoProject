@@ -322,9 +322,9 @@ func openDB2() (DB2 *sql.DB) {
 		panic(fmt.Sprintf("Open mysql failed,Error:%v\n", err))
 	}
 
-	DB2.SetConnMaxLifetime(100 * time.Second) //最大连接周期，超过时间的连接就close
-	DB2.SetMaxOpenConns(100)                  //设置最大连接数
-	DB2.SetMaxIdleConns(16)                   //设置闲置连接数
+	DB2.SetConnMaxLifetime(28800 * time.Second) //最大连接周期，超过时间的连接就close
+	DB2.SetMaxOpenConns(100)                    //设置最大连接数
+	DB2.SetMaxIdleConns(16)                     //设置闲置连接数
 
 	return
 }
