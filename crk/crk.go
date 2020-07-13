@@ -48,6 +48,7 @@ var typeEffective string
 var typeCharge string
 var serverId int64
 var myDate string
+var initialDate string
 
 type ServerData struct {
 	GameId   int64 `db:"game_id"`
@@ -126,6 +127,7 @@ func init() {
 	flag.StringVar(&typeEffective, "type-effective", "off", "有效数模式")
 	flag.StringVar(&typeCharge, "type-charge", "off", "付费数模式")
 	flag.StringVar(&myDate, "my-date", "", "汇总日期")
+	flag.StringVar(&initialDate, "initial-date", "", "开始汇总日期")
 	flag.Int64Var(&serverId, "server-id", 0, "区服id")
 	flag.Parse()
 
@@ -142,6 +144,10 @@ func main() {
 	//os.Exit(0)
 
 	date := time.Now().AddDate(0, 0, -2)
+
+	if initialDate != "" {
+		date, _ = time.ParseInLocation("2006-01-02", initialDate, loc)
+	}
 
 	fmt.Println(fmt.Sprintf("Task begin StartDate:%s EndDate:%s RunDate:%s", date.AddDate(0, 0, -92).Format("2006-01-02"), date.Format("2006-01-02"), time.Now().Format("2006-01-02 15:04:05")))
 
