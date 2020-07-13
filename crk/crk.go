@@ -46,6 +46,7 @@ var totalSuccessCount int64 = 0
 var totalErrorCount int64 = 0
 var typeEffective string
 var typeCharge string
+var noCache string
 var serverId int64
 var myDate string
 var initialDate string
@@ -126,6 +127,7 @@ func init() {
 
 	flag.StringVar(&typeEffective, "type-effective", "off", "有效数模式")
 	flag.StringVar(&typeCharge, "type-charge", "off", "付费数模式")
+	flag.StringVar(&noCache, "no-cache", "off", "覆盖缓存")
 	flag.StringVar(&myDate, "my-date", "", "汇总日期")
 	flag.StringVar(&initialDate, "initial-date", "", "开始汇总日期")
 	flag.Int64Var(&serverId, "server-id", 0, "区服id")
@@ -195,7 +197,7 @@ func main() {
 			if typeCharge == "on" {
 				key := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%d", serverData, startTime))))
 				keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk_charge_user_map", key))
-				if keyExist {
+				if keyExist && noCache == "off" {
 					r, _ := redis.String(RC.Do("HGET", "cj655_crk_charge_user_map", key))
 					if r != "" {
 						userIds = strings.Split(r, ",")
@@ -209,7 +211,7 @@ func main() {
 			} else if typeEffective == "on" {
 				key := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%d", serverData, startTime))))
 				keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk_effective_user_map", key))
-				if keyExist {
+				if keyExist && noCache == "off" {
 					r, _ := redis.String(RC.Do("HGET", "cj655_crk_effective_user_map", key))
 					if r != "" {
 						userIds = strings.Split(r, ",")
@@ -223,7 +225,7 @@ func main() {
 			} else {
 				key := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%v%d", serverData, startTime))))
 				keyExist, _ := redis.Bool(RC.Do("HEXISTS", "cj655_crk_create_user_map", key))
-				if keyExist {
+				if keyExist && noCache == "off" {
 					r, _ := redis.String(RC.Do("HGET", "cj655_crk_create_user_map", key))
 					if r != "" {
 						userIds = strings.Split(r, ",")
