@@ -30,6 +30,7 @@ type ChannelData struct {
 type PresidentChannelData struct {
 	ChannelId       string  `json:"channel_id"`
 	GradeMoney      string  `json:"grade_money"`
+	ImGradeMoney    string  `json:"im_grade_money"`
 	JlNum           string  `json:"jl_num"`
 	UniqueRegNum    string  `json:"unique_reg_num"`
 	PerSettleMoney  int     //渠道单价
@@ -319,7 +320,7 @@ func getPresidentChannelDatas(presidentChannelIds []string, month string, gameDa
 	resp, err := http.PostForm("https://admin.cj655.com/api.php?m=channelpublic&a=get_channel_month_data", url.Values{
 		"month":       {month},
 		"channel_ids": {strings.Join(presidentChannelIds, ",")},
-		"field":       {"channel_id,unique_reg_num,jl_num,grade_money"},
+		"field":       {"channel_id,unique_reg_num,jl_num,grade_money,im_grade_money"},
 		"api_key":     {"TbjoLfLhnikp92hyd8dx0ozCcEipII2Z"},
 	})
 
@@ -336,15 +337,24 @@ func getPresidentChannelDatas(presidentChannelIds []string, month string, gameDa
 	_ = json.Unmarshal(body, &presidentChannelDatas)
 
 	//计算PerSettleMoney 新增计数用户*20+渠道评级对应的价格*有效数
+	//计算PerSettleMoney 从2020-06起:新增计数用户*20+综合评级对应的价格*有效数
 	for index, presidentChannelData := range presidentChannelDatas {
 
 		JlNum, _ := strconv.Atoi(presidentChannelData.JlNum)
 
 		GradeMoney, _ := strconv.Atoi(presidentChannelData.GradeMoney)
 
+		ImGradeMoney, _ := strconv.Atoi(presidentChannelData.ImGradeMoney)
+
 		UniqueRegNum, _ := strconv.Atoi(presidentChannelData.UniqueRegNum)
 
-		SettleMoney := JlNum*20 + GradeMoney/100*UniqueRegNum
+		var SettleMoney int
+		//判断是否2020-06月之前
+		if startTime < 1590940800 {
+			SettleMoney = JlNum*20 + GradeMoney/100*UniqueRegNum
+		} else {
+			SettleMoney = JlNum*20 + ImGradeMoney/100*UniqueRegNum
+		}
 
 		if UniqueRegNum > 0 {
 			presidentChannelDatas[index].PerSettleMoney = SettleMoney / UniqueRegNum
